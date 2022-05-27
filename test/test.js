@@ -53,7 +53,7 @@ describe("Community", function () {
     beforeEach("deploying", async() => {
         
         ControlContractFactoryF = await ethers.getContractFactory("ControlContractFactory");    
-        ControlContractF = await ethers.getContractFactory("ControlContract");    
+        ControlContractF = await ethers.getContractFactory("ControlContractMock");    
         CommunityMockF = await ethers.getContractFactory("CommunityMock");    
         
         
@@ -107,9 +107,7 @@ describe("Community", function () {
                 rc = await tx.wait(); // 0ms, as tx is already confirmed
                 event = rc.events.find(event => event.event === 'InstanceCreated');
                 [instance, instancesCount] = event.args;
-                ControlContract = await ethers.getContractAt("ControlContract",instance);
-
-                
+                ControlContract = await ethers.getContractAt("ControlContractMock",instance);
 
             });
 
@@ -224,6 +222,60 @@ describe("Community", function () {
                 var counterAfter = await ERC20Mintable.balanceOf(accountFive.address);
 
                 expect(BigNumber.from(counterAfter).sub(BigNumber.from(counterBefore))).to.be.eq(TEN.mul(ONE_ETH));
+                
+
+            });
+
+            it('itself call', async () => {
+
+                await CommunityMock.setRoles(accountOne.address, ['sub-admins']);
+                await CommunityMock.setRoles(accountTwo.address, ['members']);
+                await CommunityMock.setRoles(accountThree.address, ['members']);
+
+                await expect(
+                    ControlContract.setInsideVar(2)
+                ).to.be.revertedWith("able to call from itself only");
+
+                var insideVarBefore = await ControlContract.getInsideVar();
+
+                // call test mock method setInsideVar(uint256 i) 
+                // 0xfdf172c20000000000000000000000000000000000000000000000000000000000000002
+                // setInsideVar(2)
+                let funcHexademicalStr = 'fdf172c2';
+                let memoryParamsHexademicalStr = '0000000000000000000000000000000000000000000000000000000000000002';
+
+                await ControlContract.connect(owner).addMethod(
+                    ControlContract.address,
+                    funcHexademicalStr,
+                    'sub-admins',
+                    'members',
+                    2, //uint256 minimum,
+                    1 //uint256 fraction
+                    ,
+                )
+                let tx,rc;
+                var invokeID,invokeIDWei; 
+
+                tx = await ControlContract.connect(accountOne).invoke(
+                    ControlContract.address,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr //string memory params
+                    ,
+                );
+                
+                rc = await tx.wait(); // 0ms, as tx is already confirmed
+                event = rc.events.find(event => event.event === 'OperationInvoked');
+                //invokeID, invokeIDWei, tokenAddr, method, params
+                [invokeID,invokeIDWei,,,] = event.args;
+
+                await ControlContract.connect(accountTwo).endorse(invokeID);
+
+                await accountThree.sendTransaction({to: ControlContract.address, value: invokeIDWei})
+                
+                var insideVarAfter = await ControlContract.getInsideVar();
+
+                expect(insideVarBefore).to.be.eq(ZERO);
+                expect(insideVarAfter).to.be.eq(TWO);
                 
 
             });
