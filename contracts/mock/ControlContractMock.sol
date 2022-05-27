@@ -37,5 +37,24 @@ contract ControlContractMock is ControlContract {
     //         }
     //     }
     // }
+
+    uint256 uint256Var;
+
+    function setInsideVar(uint256 i) 
+        public 
+    {
+        require(msg.sender == address(this), "able to call from itself only" );
+
+        uint256Var = i;
+    }
+
+    function getInsideVar(
+    ) 
+        public 
+        view 
+        returns(uint256 i)
+    {
+        return uint256Var;
+    }
     
 }
