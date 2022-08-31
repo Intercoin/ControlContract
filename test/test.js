@@ -38,6 +38,9 @@ describe("Community", function () {
     const accountNine = accounts[9];
     const accountEleven = accounts[11];
     const accountTwelwe = accounts[12];
+    const alice = accounts[1];  
+    const bob = accounts[2];
+    const charlie= accounts[3];
     
     // setup useful vars
     var ControlContractFactoryF;
@@ -608,16 +611,93 @@ describe("Community", function () {
                 );
                 
             });
-
-
             
         });
         
-
-        
     });
 
+    describe("Tokens Transfers", function () {
+        var ControlContract;
+        
 
+        var MockERC20F,
+            MockERC721F,
+            MockERC777F,
+            MockERC1155F,
+            MockERC20,
+            MockERC721,
+            MockERC777,
+            MockERC1155
+        ;
+
+        beforeEach("deploying", async() => {
+            let tx,rc,event,instance,instancesCount;
+            //
+            tx = await ControlContractFactory.connect(owner).produce(CommunityMock.address, [['sub-admins','members']]);
+            rc = await tx.wait(); // 0ms, as tx is already confirmed
+            event = rc.events.find(event => event.event === 'InstanceCreated');
+            [instance, instancesCount] = event.args;
+            ControlContract = await ethers.getContractAt("ControlContractMock",instance);
+
+            MockERC20F = await ethers.getContractFactory("MockERC20");
+            MockERC721F = await ethers.getContractFactory("MockERC721");
+            MockERC777F = await ethers.getContractFactory("MockERC777");
+            MockERC1155F = await ethers.getContractFactory("MockERC1155");
+
+            MockERC20 = await MockERC20F.connect(owner).deploy("testname","testsymbol");
+            MockERC721 = await MockERC721F.connect(owner).deploy("testname","testsymbol");
+            MockERC777 = await MockERC777F.connect(owner).deploy("testname","testsymbol");
+            MockERC1155 = await MockERC1155F.connect(owner).deploy();
+        });
+        
+        it('ERC20: should obtain and send to some1', async () => {
+            expect(await MockERC20.balanceOf(ControlContract.address)).to.be.eq(ZERO);
+            //obtain
+            await MockERC20.mint(ControlContract.address, ONE);
+            expect(await MockERC20.balanceOf(ControlContract.address)).to.be.eq(ONE);
+            //send
+            await ControlContract.transferERC20(MockERC20.address, bob.address, ONE);
+            expect(await MockERC20.balanceOf(bob.address)).to.be.eq(ONE);
+            //
+            expect(await MockERC20.balanceOf(ControlContract.address)).to.be.eq(ZERO);
+
+        });
+        it('ERC721: should obtain and send to some1', async () => {
+            await expect(MockERC721.ownerOf(ONE)).to.be.revertedWith("ERC721: owner query for nonexistent token");
+            //obtain
+            await MockERC721.mint(ControlContract.address, ONE);
+            expect(await MockERC721.ownerOf(ONE)).to.be.eq(ControlContract.address);
+            //send
+            await ControlContract.transferERC721(MockERC721.address, bob.address, ONE);
+            expect(await MockERC721.ownerOf(ONE)).to.be.eq(bob.address);
+        });
+
+        it('ERC777: should obtain and send to some1', async () => {
+            expect(await MockERC777.balanceOf(ControlContract.address)).to.be.eq(ZERO);
+            //obtain
+            await MockERC777.mint(ControlContract.address, ONE);
+            expect(await MockERC777.balanceOf(ControlContract.address)).to.be.eq(ONE);
+            //send
+            await ControlContract.transferERC777(MockERC777.address, bob.address, ONE);
+            expect(await MockERC777.balanceOf(bob.address)).to.be.eq(ONE);
+            //
+            expect(await MockERC777.balanceOf(ControlContract.address)).to.be.eq(ZERO);
+        });
+        it('ERC1155: should obtain and send to some1', async () => {
+
+            expect(await MockERC1155.balanceOf(ControlContract.address, TWO)).to.be.eq(ZERO);
+            //obtain
+            await MockERC1155.mint(ControlContract.address, TWO, ONE);
+            expect(await MockERC1155.balanceOf(ControlContract.address, TWO)).to.be.eq(ONE);
+            //send
+            await ControlContract.transferERC1155(MockERC1155.address, bob.address, TWO, ONE);
+            expect(await MockERC1155.balanceOf(bob.address, TWO)).to.be.eq(ONE);
+            //
+            expect(await MockERC1155.balanceOf(ControlContract.address, TWO)).to.be.eq(ZERO);
+
+        });
+        
+    });
 
 
 

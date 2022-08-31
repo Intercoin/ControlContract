@@ -4,22 +4,30 @@ pragma solidity ^0.8.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+
+import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC1820RegistryUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777SenderUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155ReceiverUpgradeable.sol";
+
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 
 import "./interfaces/ICommunity.sol";
 import "./interfaces/IControlContract.sol";
 
 import "./lib/StringUtils.sol";
-//deprecated
-//import "./IntercoinTrait.sol";
 
-contract ControlContract is OwnableUpgradeable, ReentrancyGuardUpgradeable, IControlContract/*, IntercoinTrait*/ {
+contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable, IERC777SenderUpgradeable, IERC1155ReceiverUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, IControlContract {
     
     using AddressUpgradeable for address;
-    
+    IERC1820RegistryUpgradeable internal constant _ERC1820_REGISTRY = IERC1820RegistryUpgradeable(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
+
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     
@@ -89,6 +97,56 @@ contract ControlContract is OwnableUpgradeable, ReentrancyGuardUpgradeable, ICon
         uint256 invokeID = groups[currentGroupIndex].pairWeiInvokeId[uint40(msg.value)];
         _endorse(invokeID);
     }
+
+    function tokensReceived(
+        address operator,
+        address from,
+        address to,
+        uint256 amount,
+        bytes calldata userData,
+        bytes calldata operatorData
+    ) external 
+    {
+    }
+
+    function tokensToSend(
+        address operator,
+        address from,
+        address to,
+        uint256 amount,
+        bytes calldata userData,
+        bytes calldata operatorData
+    ) external
+    {
+    }
+
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external returns (bytes4) {
+        return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
+    }
+
+    function onERC1155BatchReceived(
+        address operator,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) external returns (bytes4) {
+        return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
+        return interfaceId == type(IControlContract).interfaceId;
+    }
+
     
     //----------------------------------------------------
     // public section 
@@ -150,6 +208,12 @@ contract ControlContract is OwnableUpgradeable, ReentrancyGuardUpgradeable, ICon
             groups[i].endorseRoles.add(roleAdd(groupRoles[i].endorseRole));
             
         }
+
+        // register interfaces
+        _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC20Token"), address(this));
+        _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC777Token"), address(this));
+        _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC777TokensSender"), address(this));
+        _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC777TokensRecipient"), address(this));
     }
     
     /**
@@ -501,5 +565,6 @@ contract ControlContract is OwnableUpgradeable, ReentrancyGuardUpgradeable, ICon
         )));    
     }
     
+
 }
 
