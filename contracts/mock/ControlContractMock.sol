@@ -56,5 +56,18 @@ contract ControlContractMock is ControlContract {
     {
         return uint256Var;
     }
+
+    function transferERC20(address token, address to, uint256 amount) public {
+        IERC20Upgradeable(token).transfer(to, amount);
+    }
+    function transferERC1155(address token, address to, uint256 id, uint256 amount) public {
+        IERC1155Upgradeable(token).safeTransferFrom(address(this), to, id, amount, ""); 
+    }
+    function transferERC777(address token, address to, uint256 amount) public {
+        IERC20Upgradeable(token).transfer(to, amount);
+    }
+    function transferERC721(address token, address to, uint256 amount) public {
+        IERC721Upgradeable(token).safeTransferFrom(address(this), to, amount); 
+    }
     
 }
