@@ -459,9 +459,11 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         if (roles.length == 0) {
             revert MissingEndorseRole(_msgSender());
         }
+        
         if (operation.endorsedAccounts.contains(_msgSender()) == true) {
             revert TxAlreadyEndorced(_msgSender());
         }
+        
         if (operation.proceed == true) {
             revert TxAlreadyExecute(invokeID);
         }

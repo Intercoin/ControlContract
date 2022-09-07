@@ -4,21 +4,32 @@ pragma experimental ABIEncoderV2;
 
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "../interfaces/ICommunity.sol";
+import "@artman325/community/contracts/interfaces/ICommunity.sol";
 
 contract CommunityMock is OwnableUpgradeable, ICommunity {
     
-    mapping(address => string[]) roles;
+    mapping(address => uint8[]) roles;
     uint256 count = 5;
     
-    function memberCount(string memory role) public override view returns(uint256) {
+    function initialize(
+        address implState,
+        address implView,
+        address hook, 
+        address costManager, 
+        string memory name, 
+        string memory symbol
+    ) external {
+
+    }
+
+    function addressesCount(uint8/* roleIndex*/) public override view returns(uint256) {
         return count;
     }
-    function setMemberCount(uint256 _count) public returns(uint256) {
+    function setMemberCount(uint256 _count) public {
         count = _count;
     }
     
-    function setRoles(address member, string[] memory _roles) public {
+    function setRoles(address member, uint8[] memory _roles) public {
         uint256 len;
         for(uint256 i = 0; i < _roles.length; i++) {
             len = roles[member].length;
@@ -28,7 +39,7 @@ contract CommunityMock is OwnableUpgradeable, ICommunity {
         
     }
     
-    function getRoles(address member)public override view returns(string[] memory list){
+    function getRoles(address member)public override view returns(uint8[] memory list){
         // string[] memory list = new string[](5);
         // list[0] = 'owners';
         // list[1] = 'admins';
@@ -41,7 +52,8 @@ contract CommunityMock is OwnableUpgradeable, ICommunity {
         return list;
         
     }
-    function getMember(string memory role) public override view returns(address[] memory){
+
+    function getAddresses(uint8/* rolesIndex*/) public override pure returns(address[] memory){
         address[] memory list = new address[](0);
         return list;
     }

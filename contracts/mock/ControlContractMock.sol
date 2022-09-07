@@ -3,7 +3,7 @@ pragma solidity ^0.8.11;
 pragma experimental ABIEncoderV2;
 
 import "../ControlContract.sol";
-import "../interfaces/ICommunity.sol";
+import "@artman325/community/contracts/interfaces/ICommunity.sol";
 
 contract ControlContractMock is ControlContract {
    
