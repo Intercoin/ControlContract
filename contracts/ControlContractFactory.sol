@@ -4,8 +4,10 @@ pragma solidity ^0.8.11;
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IControlContract.sol";
+import "releasemanager/contracts/CostManagerFactoryHelper.sol";
+import "releasemanager/contracts/ReleaseManagerHelper.sol";
 
-contract ControlContractFactory {
+contract ControlContractFactory is CostManagerFactoryHelper, ReleaseManagerHelper{
     using Clones for address;
 
     /**
@@ -20,10 +22,13 @@ contract ControlContractFactory {
 
     /**
     * @param controlContractImpl address of СontrolContract implementation
+    * @param costManager address of costManager
     */
     constructor(
-        address controlContractImpl
+        address controlContractImpl,
+        address costManager
     ) 
+        CostManagerFactoryHelper(costManager)
     {
         controlContractImplementation = controlContractImpl;
     }
@@ -67,7 +72,7 @@ contract ControlContractFactory {
 
         _produce(instance);
 
-        IControlContract(instance).init(communityAddr, groupRoles);
+        IControlContract(instance).init(communityAddr, groupRoles, costManager);
 
         Ownable(instance).transferOwnership(msg.sender);
         

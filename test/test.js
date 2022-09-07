@@ -22,6 +22,8 @@ const ONE_ETH = ethers.utils.parseEther('1');
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 const DEAD_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
+const NO_COSTMANAGER = ZERO_ADDRESS;
+
 describe("Community", function () {
     const accounts = waffle.provider.getWallets();
     
@@ -52,18 +54,46 @@ describe("Community", function () {
     var ControlContract;
     var CommunityMock;
     
-
+    var CostManagerBad, CostManagerGood;
     beforeEach("deploying", async() => {
+        const ReleaseManagerFactoryF = await ethers.getContractFactory("MockReleaseManagerFactory");
+        const CostManagerGoodF = await ethers.getContractFactory("MockCostManagerGood");
+        const CostManagerBadF = await ethers.getContractFactory("MockCostManagerBad");
+
+        const ReleaseManagerF = await ethers.getContractFactory("MockReleaseManager");
         
         ControlContractFactoryF = await ethers.getContractFactory("ControlContractFactory");    
         ControlContractF = await ethers.getContractFactory("ControlContractMock");    
         CommunityMockF = await ethers.getContractFactory("CommunityMock");    
         
-        
+        CostManagerGood = await CostManagerGoodF.deploy();
+        CostManagerBad = await CostManagerBadF.deploy();
+        let implementationReleaseManager    = await ReleaseManagerF.deploy();
+
+        let releaseManagerFactory   = await ReleaseManagerFactoryF.connect(owner).deploy(implementationReleaseManager.address);
+        let tx,rc,event,instance,instancesCount;
+        //
+        tx = await releaseManagerFactory.connect(owner).produce();
+        rc = await tx.wait(); // 0ms, as tx is already confirmed
+        event = rc.events.find(event => event.event === 'InstanceProduced');
+        [instance, instancesCount] = event.args;
+        let releaseManager = await ethers.getContractAt("MockReleaseManager",instance);
 
         var ControlContractImpl = await ControlContractF.connect(owner).deploy();
         CommunityMock = await CommunityMockF.connect(owner).deploy();
-        ControlContractFactory = await ControlContractFactoryF.connect(owner).deploy(ControlContractImpl.address);
+        ControlContractFactory = await ControlContractFactoryF.connect(owner).deploy(ControlContractImpl.address, NO_COSTMANAGER);
+
+        // 
+        const factoriesList = [ControlContractFactory.address];
+        const factoryInfo = [
+            [
+                1,//uint8 factoryIndex; 
+                1,//uint16 releaseTag; 
+                "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
+            ]
+        ]
+        await ControlContractFactory.connect(owner).registerReleaseManager(releaseManager.address);
+        await releaseManager.connect(owner).newRelease(factoriesList, factoryInfo);
 
     });
 
@@ -298,14 +328,38 @@ describe("Community", function () {
 
                 let ControlContractMockF = await ethers.getContractFactory("ControlContractMock");    
                 var ControlContractMockImpl = await ControlContractMockF.connect(owner).deploy();
-                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address);
+                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER);
 
                 await CommunityMock.setRoles(accountOne.address, ['group1_can_invoke']);
                 await CommunityMock.setRoles(accountTwo.address, ['group1_can_endorse']);
                 await CommunityMock.setRoles(accountThree.address, ['group1_can_endorse']);
 
+                const ReleaseManagerFactoryF = await ethers.getContractFactory("MockReleaseManagerFactory");
+                const ReleaseManagerF = await ethers.getContractFactory("MockReleaseManager");
+
+                let implementationReleaseManager    = await ReleaseManagerF.deploy();
+                let releaseManagerFactory   = await ReleaseManagerFactoryF.connect(owner).deploy(implementationReleaseManager.address);
+                let tx,rc,event,instance,instancesCount;
+                //
+                tx = await releaseManagerFactory.connect(owner).produce();
+                rc = await tx.wait(); // 0ms, as tx is already confirmed
+                event = rc.events.find(event => event.event === 'InstanceProduced');
+                [instance, instancesCount] = event.args;
+                let releaseManager = await ethers.getContractAt("MockReleaseManager",instance);
                 
-                
+                // 
+                const factoriesList = [ControlContractFactoryMock.address];
+                const factoryInfo = [
+                    [
+                        1,//uint8 factoryIndex; 
+                        1,//uint16 releaseTag; 
+                        "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
+                    ]
+                ]
+                await ControlContractFactoryMock.connect(owner).registerReleaseManager(releaseManager.address);
+                await releaseManager.connect(owner).newRelease(factoriesList, factoryInfo);
+                //-------------------------------------------------
+
                 //
                 tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [['group1_can_invoke','group1_can_endorse']]);
                 rc = await tx.wait(); // 0ms, as tx is already confirmed
@@ -383,7 +437,7 @@ describe("Community", function () {
 
                 let ControlContractMockF = await ethers.getContractFactory("ControlContractMock");    
                 var ControlContractMockImpl = await ControlContractMockF.connect(owner).deploy();
-                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address);
+                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER);
 
                 await CommunityMock.setRoles(accountOne.address, ['group1_can_invoke']);
                 await CommunityMock.setRoles(accountTwo.address, ['group1_can_endorse']);
@@ -391,6 +445,32 @@ describe("Community", function () {
                 await CommunityMock.setRoles(accountFourth.address, ['group2_can_endorse']);
                 
                 let tx,rc,event,instance,instancesCount;
+                const ReleaseManagerFactoryF = await ethers.getContractFactory("MockReleaseManagerFactory");
+                const ReleaseManagerF = await ethers.getContractFactory("MockReleaseManager");
+
+                let implementationReleaseManager    = await ReleaseManagerF.deploy();
+                let releaseManagerFactory   = await ReleaseManagerFactoryF.connect(owner).deploy(implementationReleaseManager.address);
+                
+                //
+                tx = await releaseManagerFactory.connect(owner).produce();
+                rc = await tx.wait(); // 0ms, as tx is already confirmed
+                event = rc.events.find(event => event.event === 'InstanceProduced');
+                [instance, instancesCount] = event.args;
+                let releaseManager = await ethers.getContractAt("MockReleaseManager",instance);
+                
+                // 
+                const factoriesList = [ControlContractFactoryMock.address];
+                const factoryInfo = [
+                    [
+                        1,//uint8 factoryIndex; 
+                        1,//uint16 releaseTag; 
+                        "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
+                    ]
+                ]
+                await ControlContractFactoryMock.connect(owner).registerReleaseManager(releaseManager.address);
+                await releaseManager.connect(owner).newRelease(factoriesList, factoryInfo);
+                //-------------------------------------------------
+                
                 //
                 tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [['group1_can_invoke','group1_can_endorse'], ['group2_can_invoke','group2_can_endorse']]);
                 rc = await tx.wait(); // 0ms, as tx is already confirmed

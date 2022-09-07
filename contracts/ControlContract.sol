@@ -23,7 +23,9 @@ import "./interfaces/IControlContract.sol";
 
 import "./lib/StringUtils.sol";
 
-contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable, IERC777SenderUpgradeable, IERC1155ReceiverUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, IControlContract {
+import "releasemanager/contracts/CostManagerHelper.sol";
+
+contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable, IERC777SenderUpgradeable, IERC1155ReceiverUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, IControlContract, CostManagerHelper {
     
     using AddressUpgradeable for address;
     IERC1820RegistryUpgradeable internal constant _ERC1820_REGISTRY = IERC1820RegistryUpgradeable(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
@@ -121,22 +123,22 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     }
 
     function onERC1155Received(
-        address operator,
-        address from,
-        uint256 id,
-        uint256 value,
-        bytes calldata data
-    ) external returns (bytes4) {
+        address /*operator*/,
+        address /*from*/,
+        uint256 /*id*/,
+        uint256 /*value*/,
+        bytes calldata /*data*/
+    ) external pure returns (bytes4) {
         return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
     }
 
     function onERC1155BatchReceived(
-        address operator,
-        address from,
-        uint256[] calldata ids,
-        uint256[] calldata values,
-        bytes calldata data
-    ) external returns (bytes4) {
+        address /*operator*/,
+        address /*from*/,
+        uint256[] calldata /*ids*/,
+        uint256[] calldata /*values*/,
+        bytes calldata/* data*/
+    ) external pure returns (bytes4) {
         return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
     }
 
@@ -155,16 +157,21 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
      * @dev here invokeRole can equal endorseRole withih one group but can't be in other groups
      * @param communityAddr community address
      * @param groupRoles tuples of GroupRolesSetting
+     * @param costManager costManager address
      * @custom:calledby factory
      * @custom:shortd initialize while factory produce
      */
     function init(
         ICommunity communityAddr,
-        GroupRolesSetting[] memory groupRoles
+        GroupRolesSetting[] memory groupRoles,
+        address costManager
     )
         public 
         initializer
     {
+        __CostManagerHelper_init(_msgSender());
+        _setCostManager(costManager);
+
         __Ownable_init();
         __ReentrancyGuard_init();
         

@@ -50,6 +50,7 @@ interface IControlContract {
 
     function init(
         ICommunity communityAddr,
-        GroupRolesSetting[] memory groupRoles
+        GroupRolesSetting[] memory groupRoles,
+        address costManager
     ) external;
 }
