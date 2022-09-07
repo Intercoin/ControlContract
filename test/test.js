@@ -663,7 +663,7 @@ describe("Community", function () {
 
         });
         it('ERC721: should obtain and send to some1', async () => {
-            await expect(MockERC721.ownerOf(ONE)).to.be.revertedWith("ERC721: owner query for nonexistent token");
+            await expect(MockERC721.ownerOf(ONE)).to.be.revertedWith("ERC721: invalid token ID");
             //obtain
             await MockERC721.mint(ControlContract.address, ONE);
             expect(await MockERC721.ownerOf(ONE)).to.be.eq(ControlContract.address);
