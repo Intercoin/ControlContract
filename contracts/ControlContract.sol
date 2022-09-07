@@ -18,7 +18,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 
-import "./interfaces/ICommunity.sol";
+/////import "./interfaces/ICommunity.sol";
+import "@artman325/community/contracts/interfaces/ICommunity.sol";
 import "./interfaces/IControlContract.sol";
 
 import "./lib/StringUtils.sol";
@@ -35,30 +36,31 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     
     using StringUtils for *;
     
-    ICommunity communityAddress;
-    
-    uint256 internal groupTimeoutActivity;
-    
+    uint256 internal constant fractionDiv = 1e10;
+    uint256 internal constant groupTimeoutActivity = 2_592_000; // 30 days
+
+    address communityAddress;
     uint256 internal currentGroupIndex;
     uint256 private maxGroupIndex;
-    
-    
-    mapping(string => uint256) roleIDs;
     uint256 private lastRoleIndex;
     
-    // mapping(bytes32 => EnumerableSetUpgradeable.UintSet) invokeAllowed;
-    // mapping(bytes32 => EnumerableSetUpgradeable.UintSet) endorseAllowed;
-    
+    mapping(uint256 => uint256) roleIDs;
     mapping(bytes32 => Method) methods;
-    
-
-    uint256 internal fractionDiv; //  = 1e10
-    
-    
     mapping(uint256 => Group) internal groups;
     
-    
-    
+    error RoleDoesNotExists(uint8 roleid);
+    error MethodAlreadyRegistered(string method, uint256 minimum, uint256 fraction);
+    error UnknownInvokeId(uint256 unvokeID); //'Such invokeID does not exist'
+    error UnknownMethod(address contractAddress, string method); // 'Such method does not exists'
+    error MissingInvokeRole(address sender); //"Sender has not in Endorse role"
+    error MissingEndorseRole(address sender); //"Sender has not in Endorse role"
+    error TxAlreadyEndorced(address sender); // "Sender is already endorse this transaction"
+    error TxAlreadyExecute(uint256 invokeID); // "Transaction have already executed"
+    error EmptyCommunityAddress(); //"Community address can not be zero"
+    error NoGroups(); //"need at least one group"
+    error RolesExistsOrInvokeEqualEndorse();//"Role is already exists or invokeRole equal endorseRole"
+    error SenderIsOutOfCurrentOwnerGroup(address sender, uint256 currentGroupIndex); // "Sender is out of current owner group"
+
     //----------------------------------------------------
     // modifiers section 
     //----------------------------------------------------
@@ -70,13 +72,15 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     {
         bool s = false;
         bytes32 k = keccak256(abi.encodePacked(contractAddress,method));
-        string[] memory roles = ICommunity(communityAddress).getRoles(sender);
+        uint8[] memory roles = ICommunity(communityAddress).getRoles(sender);
         for (uint256 i = 0; i < roles.length; i++) {
             if (methods[k].invokeRolesAllowed.contains(roleIDs[roles[i]])) {
                 s = true;
             }
         }
-        require(s == true, "Sender has not in Invoke role");
+        if (s == false) {
+            revert MissingInvokeRole(sender);
+        }
         _;
     }
     
@@ -162,7 +166,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
      * @custom:shortd initialize while factory produce
      */
     function init(
-        ICommunity communityAddr,
+        address communityAddr,
         GroupRolesSetting[] memory groupRoles,
         address costManager
     )
@@ -176,10 +180,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         __ReentrancyGuard_init();
         
         communityAddress = communityAddr;
-        
-        groupTimeoutActivity = 2_592_000; // 30 days
         lastRoleIndex = 0;
-        fractionDiv = 1e10;
         
         /*
         [   //  invokeRole         endorseRole
@@ -189,26 +190,27 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             [Role#4Group#4,Role#8Group#4]
         ]
         */
-        
-        require(
-            (address(communityAddr) != address(0)) && 
-            (address(communityAddr).isContract()), 
-            "Community address can not be zero"
-        );
-        require(groupRoles.length > 0, "need at least one group");
+        if (
+            (address(communityAddr) == address(0)) || ((address(communityAddr).isContract()) == false)
+        ) {
+            revert EmptyCommunityAddress();
+        }
+        if (groupRoles.length == 0) { 
+            revert NoGroups();
+        }
         
         currentGroupIndex = 0;
         maxGroupIndex = groupRoles.length;
         for (uint256 i = 0; i < groupRoles.length; i++) {
-            require(
-                (roleExists(groupRoles[i].invokeRole) == false) &&
-                (roleExists(groupRoles[i].endorseRole) == false) &&
-                (
-                    keccak256(abi.encodePacked(groupRoles[i].invokeRole)) != keccak256(abi.encodePacked(groupRoles[i].endorseRole))
-                ),
-                "Role is already exists or invokeRole equal endorseRole"
-            );
             
+            if (
+                (roleExists(groupRoles[i].invokeRole) == true) ||
+                (roleExists(groupRoles[i].endorseRole) == true) ||
+                (keccak256(abi.encodePacked(groupRoles[i].invokeRole)) == keccak256(abi.encodePacked(groupRoles[i].endorseRole)))
+            ) {
+                revert RolesExistsOrInvokeEqualEndorse();
+            }
+
             groups[i].index = maxGroupIndex;
             groups[i].lastSeenTime = block.timestamp;
             groups[i].invokeRoles.add(roleAdd(groupRoles[i].invokeRole));
@@ -241,7 +243,9 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         returns(uint256 invokeID, uint40 invokeIDWei)
     {
         bytes32 k = keccak256(abi.encodePacked(contractAddress,method));
-        require(methods[k].exists == true, "Such method does not exists");
+        if (methods[k].exists == false) {
+            revert UnknownMethod(contractAddress, method);
+        }
         
         heartbeat();
         
@@ -279,8 +283,8 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     /**
      * @param contractAddress token's address
      * @param method hexademical method's string
-     * @param invokeRoleName invoke rolename
-     * @param endorseRoleName endorse rolename
+     * @param invokeRoleId invoke role id
+     * @param endorseRoleId endorse role id
      * @param minimum  minimum
      * @param fraction fraction value mul by 1e10
      * @custom:calledby owner
@@ -289,8 +293,8 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     function addMethod(
         address contractAddress,
         string memory method,
-        string memory invokeRoleName,
-        string memory endorseRoleName,
+        uint8 invokeRoleId,
+        uint8 endorseRoleId,
         uint256 minimum,
         uint256 fraction
     )
@@ -299,17 +303,21 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     {
         bytes32 k = keccak256(abi.encodePacked(contractAddress,method));
         
-        require(roleExists(invokeRoleName), "Rolename does not exists");
-        require(roleExists(endorseRoleName), "Rolename does not exists");
+        if (
+            !roleExists(invokeRoleId) || 
+            !roleExists(invokeRoleId)
+        ) {
+            revert RoleDoesNotExists(invokeRoleId);
+        }
         
         // require(methods[k].exists == false, "Such method has already registered");
         if (methods[k].exists == false) {
 
         } else {
-            require(
-                (methods[k].minimum == minimum) && (methods[k].fraction == fraction), 
-                "Such method has already registered with another minimum and fraction"
-            );
+            if ((methods[k].minimum == minimum) && (methods[k].fraction == fraction)) {
+            } else {
+                revert MethodAlreadyRegistered(method, minimum, fraction);
+            }
         }
         
         methods[k].exists = true;
@@ -317,8 +325,8 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         methods[k].method = method;
         methods[k].minimum = minimum;
         methods[k].fraction = fraction;
-        methods[k].invokeRolesAllowed.add(roleIDs[invokeRoleName]);
-        methods[k].endorseRolesAllowed.add(roleIDs[endorseRoleName]);
+        methods[k].invokeRolesAllowed.add(roleIDs[invokeRoleId]);
+        methods[k].endorseRolesAllowed.add(roleIDs[endorseRoleId]);
         
     }
 
@@ -337,7 +345,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         uint256 len = 0;
         uint256 ii = 0;
         
-        string[] memory roles = ICommunity(communityAddress).getRoles(_msgSender());
+        uint8[] memory roles = ICommunity(communityAddress).getRoles(_msgSender());
         for (uint256 i = 0; i < maxGroupIndex; i++) {
             for (uint256 j = 0; j < roles.length; j++) {
                 if (
@@ -381,20 +389,19 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             }
         }
 
-        if (isBreak) {
-            if (currentGroupIndex != itGroupIndex) {
-                emit CurrentGroupIndexChanged(currentGroupIndex, itGroupIndex, block.timestamp);
-            }
-            currentGroupIndex = itGroupIndex;
-            groups[itGroupIndex].lastSeenTime = block.timestamp;
-            
-            emit HeartBeat(currentGroupIndex, block.timestamp);
-        } else {
-            revert("Sender is out of current owner group");
+        if (!isBreak) {
+            revert SenderIsOutOfCurrentOwnerGroup(_msgSender(), currentGroupIndex);
         }
+        
+        if (currentGroupIndex != itGroupIndex) {
+            emit CurrentGroupIndexChanged(currentGroupIndex, itGroupIndex, block.timestamp);
+        }
+        currentGroupIndex = itGroupIndex;
+        groups[itGroupIndex].lastSeenTime = block.timestamp;
+        
+        emit HeartBeat(currentGroupIndex, block.timestamp);
 
     }
-    
     
     /**
      * @return index expected groupIndex.
@@ -409,7 +416,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     {
         return _getExpectGroupIndex();
     }
-    
+
     //----------------------------------------------------
     // internal section 
     //----------------------------------------------------
@@ -434,7 +441,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             }
         }
     }
-    
+
     /**
      * @param invokeID invoke identificator
      */
@@ -444,36 +451,45 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         internal
         nonReentrant()
     {
-        require(groups[currentGroupIndex].operations[invokeID].exists == true, "Such invokeID does not exist");
-        string[] memory roles = getEndorsedRoles(groups[currentGroupIndex].operations[invokeID].addr, groups[currentGroupIndex].operations[invokeID].method, _msgSender());
-        require(roles.length > 0, "Sender has not in Endorse role");
-        require(groups[currentGroupIndex].operations[invokeID].endorsedAccounts.contains(_msgSender()) == false, "Sender is already endorse this transaction");
-        require(groups[currentGroupIndex].operations[invokeID].proceed == false, "Transaction have already executed");
+        Operation storage operation = groups[currentGroupIndex].operations[invokeID];
+
+        if (operation.exists == false) {revert UnknownInvokeId(invokeID);}
+
+        uint8[] memory roles = getEndorsedRoles(operation.addr, operation.method, _msgSender());
+        if (roles.length == 0) {
+            revert MissingEndorseRole(_msgSender());
+        }
+        if (operation.endorsedAccounts.contains(_msgSender()) == true) {
+            revert TxAlreadyEndorced(_msgSender());
+        }
+        if (operation.proceed == true) {
+            revert TxAlreadyExecute(invokeID);
+        }
         
-        groups[currentGroupIndex].operations[invokeID].endorsedAccounts.add(_msgSender());
+        operation.endorsedAccounts.add(_msgSender());
         
         emit OperationEndorsed(invokeID, uint40(invokeID));
         
         uint256 memberCount;
         for (uint256 i = 0; i < roles.length; i++) {
-            memberCount = ICommunity(communityAddress).memberCount(roles[i]);
+            memberCount = ICommunity(communityAddress).addressesCount(roles[i]);
             //---
             uint256 max;
-            max = memberCount * (groups[currentGroupIndex].operations[invokeID].fraction) / (fractionDiv);
-            if (groups[currentGroupIndex].operations[invokeID].minimum > max) {
-                max = groups[currentGroupIndex].operations[invokeID].minimum;
+            max = memberCount * (operation.fraction) / (fractionDiv);
+            if (operation.minimum > max) {
+                max = operation.minimum;
             }
             //---
-            if (groups[currentGroupIndex].operations[invokeID].endorsedAccounts.length() >= max) {
-                groups[currentGroupIndex].operations[invokeID].proceed = true;
+            if (operation.endorsedAccounts.length() >= max) {
+                operation.proceed = true;
                 (
-                    groups[currentGroupIndex].operations[invokeID].success, 
-                    groups[currentGroupIndex].operations[invokeID].msg
-                ) = groups[currentGroupIndex].operations[invokeID].addr.call(
+                    operation.success, 
+                    operation.msg
+                ) = operation.addr.call(
                     (
                         string(abi.encodePacked(
-                            groups[currentGroupIndex].operations[invokeID].method, 
-                            groups[currentGroupIndex].operations[invokeID].params
+                            operation.method, 
+                            operation.params
                         ))
                     ).fromHex()
                 );
@@ -498,9 +514,9 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     ) 
         internal 
         view 
-        returns(string[] memory) 
+        returns(uint8[] memory) 
     {
-        string[] memory roles = ICommunity(communityAddress).getRoles(sender);
+        uint8[] memory roles = ICommunity(communityAddress).getRoles(sender);
         uint256 len;
 
         for (uint256 i = 0; i < roles.length; i++) {
@@ -508,7 +524,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
                 len += 1;
             }
         }
-        string[] memory list = new string[](len);
+        uint8[] memory list = new uint8[](len);
         uint256 j = 0;
         for (uint256 i = 0; i < roles.length; i++) {
             if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[i]])) {
@@ -522,37 +538,37 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     /**
      * adding role to general list
      * 
-     * @param roleName role name
+     * @param roleId roleid
      * 
      * @return index true if was added and false if already exists
      */
     function roleAdd(
-        string memory roleName
+        uint8 roleId
     ) 
         internal 
         returns(uint256 index) 
     {
-        if (roleIDs[roleName] == 0) {
+        if (roleIDs[roleId] == 0) {
             lastRoleIndex += 1;
-            roleIDs[roleName] = lastRoleIndex;
+            roleIDs[roleId] = lastRoleIndex;
             index = lastRoleIndex;
         } else {
-            index = roleIDs[roleName];
+            index = roleIDs[roleId];
         }
     }
     
     /**
-     * @param roleName role name
+     * @param roleId role id
      * @return ret true if roleName exists in general list
      */
     function roleExists(
-        string memory roleName
+        uint8 roleId
     ) 
         internal 
         view
         returns(bool ret) 
     {
-        ret = (roleIDs[roleName] == 0) ? false : true;
+        ret = (roleIDs[roleId] == 0) ? false : true;
     }
     
     /**

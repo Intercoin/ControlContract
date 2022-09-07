@@ -1,5 +1,10 @@
 {
   "name": "Community",
+  "files": [
+    "/contracts/**/*.sol",
+    "/build/contracts/*.json",
+    "!/contracts/mocks/**/*"
+  ],
   "version": "1.0.0",
   "description": "Smart contract for managing community membership and roles",
   "main": "index.js",
@@ -54,6 +59,8 @@
     "@openzeppelin/test-helpers": "^0.5.16",
     "@uniswap/lib": "^4.0.1-alpha",
     "trustedforwarder": "^1.0.0",
-    "releasemanager": "^1.0.5"
+    "releasemanager": "^1.0.5",
+    "@artman325/community": "^1.0.1"
+    
   }
 }

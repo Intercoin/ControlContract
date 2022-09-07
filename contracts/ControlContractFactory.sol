@@ -61,7 +61,7 @@ contract ControlContractFactory is CostManagerFactoryHelper, ReleaseManagerHelpe
     * @param groupRoles tuples of GroupRolesSetting
     */
     function produce(
-        ICommunity communityAddr,
+        address communityAddr,
         IControlContract.GroupRolesSetting[] memory groupRoles
     ) 
         public 
