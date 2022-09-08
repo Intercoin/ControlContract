@@ -14,9 +14,9 @@ contract ControlContractMock is ControlContract {
     // function getNow() public view returns(uint256) {
     //     return block.timestamp;
     // }
-    // function getCurrentGroupIndex() public view returns(uint256) {
-    //     return currentGroupIndex;
-    // }
+    function getCurrentGroupIndex() public view returns(uint256) {
+        return currentGroupIndex;
+    }
     
     // function getEndorseAllowedMock(address tokenAddr, string memory method, address sender) public view  returns(uint256[] memory list) {
       

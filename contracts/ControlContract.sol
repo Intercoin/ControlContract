@@ -25,6 +25,7 @@ import "./interfaces/IControlContract.sol";
 import "./lib/StringUtils.sol";
 
 import "releasemanager/contracts/CostManagerHelper.sol";
+//import "hardhat/console.sol";
 
 contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable, IERC777SenderUpgradeable, IERC1155ReceiverUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, IControlContract, CostManagerHelper {
     
@@ -97,9 +98,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     // external section 
     //----------------------------------------------------
     receive() external payable {
-        
         heartbeat();
-        
         uint256 invokeID = groups[currentGroupIndex].pairWeiInvokeId[uint40(msg.value)];
         _endorse(invokeID);
     }
@@ -452,7 +451,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         nonReentrant()
     {
         Operation storage operation = groups[currentGroupIndex].operations[invokeID];
-
+        // note that `invokeID` can be zero if come from _receive !! and tx should be revert
         if (operation.exists == false) {revert UnknownInvokeId(invokeID);}
 
         uint8[] memory roles = getEndorsedRoles(operation.addr, operation.method, _msgSender());

@@ -60,9 +60,13 @@ describe("Community", function () {
       ['role4', 'Role#4'],
       ['role5', 'Role#5'],
       ['cc_admins', 'AdMiNs'],
-      ['sub-admins', 'sub-admins']
+      ['sub-admins', 'sub-admins'],
+      ['group1_can_invoke', 'group1_can_invoke'],
+      ['group1_can_endorse', 'group1_can_endorse'],
+      ['group2_can_invoke', 'group2_can_invoke'],
+      ['group2_can_endorse', 'group2_can_endorse']
     ]);
-
+   
     var rolesIndex = new Map([
       ['owners', 1],
       ['admins', 2],
@@ -74,7 +78,11 @@ describe("Community", function () {
       ['role4', 9],
       ['role5', 10],
       ['cc_admins', 11],
-      ['sub-admins', 12]
+      ['sub-admins', 12],
+      ['group1_can_invoke', 13],
+      ['group1_can_endorse', 14],
+      ['group2_can_invoke', 15],
+      ['group2_can_endorse', 16]
       
     ]);
 
@@ -223,7 +231,7 @@ describe("Community", function () {
             });
 
 
-            it.only('with params (mint tokens)', async () => {
+            it('with params (mint tokens)', async () => {
             
                 await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('sub-admins')]);
                 await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('members')]);
@@ -277,7 +285,7 @@ describe("Community", function () {
 
                 await expect(
                     accountThree.sendTransaction({to: ControlContract.address, value: invokeIDWei+2, gasLimit:80000})
-                ).to.be.revertedWith(`UnknownInvokeId(${invokeIDWei+2})`);
+                ).to.be.revertedWith(`UnknownInvokeId(0)`);
 
                 await accountThree.sendTransaction({to: ControlContract.address, value: invokeIDWei})
                 
@@ -360,9 +368,9 @@ describe("Community", function () {
                 var ControlContractMockImpl = await ControlContractMockF.connect(owner).deploy();
                 let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER);
 
-                await CommunityMock.setRoles(accountOne.address, ['group1_can_invoke']);
-                await CommunityMock.setRoles(accountTwo.address, ['group1_can_endorse']);
-                await CommunityMock.setRoles(accountThree.address, ['group1_can_endorse']);
+                await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('group1_can_invoke')]);
+                await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('group1_can_endorse')]);
+                await CommunityMock.setRoles(accountThree.address, [rolesIndex.get('group1_can_endorse')]);
 
                 const ReleaseManagerFactoryF = await ethers.getContractFactory("MockReleaseManagerFactory");
                 const ReleaseManagerF = await ethers.getContractFactory("MockReleaseManager");
@@ -391,7 +399,7 @@ describe("Community", function () {
                 //-------------------------------------------------
 
                 //
-                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [['group1_can_invoke','group1_can_endorse']]);
+                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')]]);
                 rc = await tx.wait(); // 0ms, as tx is already confirmed
                 event = rc.events.find(event => event.event === 'InstanceCreated');
                 [instance, instancesCount] = event.args;
@@ -422,8 +430,8 @@ describe("Community", function () {
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.address,
                     funcHexademicalStr,
-                    'group1_can_invoke',
-                    'group1_can_endorse',
+                    rolesIndex.get('group1_can_invoke'),
+                    rolesIndex.get('group1_can_endorse'),
                     2, //uint256 minimum,
                     1 //uint256 fraction
                     ,
@@ -469,10 +477,10 @@ describe("Community", function () {
                 var ControlContractMockImpl = await ControlContractMockF.connect(owner).deploy();
                 let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER);
 
-                await CommunityMock.setRoles(accountOne.address, ['group1_can_invoke']);
-                await CommunityMock.setRoles(accountTwo.address, ['group1_can_endorse']);
-                await CommunityMock.setRoles(accountThree.address, ['group2_can_invoke']);
-                await CommunityMock.setRoles(accountFourth.address, ['group2_can_endorse']);
+                await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('group1_can_invoke')]);
+                await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('group1_can_endorse')]);
+                await CommunityMock.setRoles(accountThree.address, [rolesIndex.get('group2_can_invoke')]);
+                await CommunityMock.setRoles(accountFourth.address, [rolesIndex.get('group2_can_endorse')]);
                 
                 let tx,rc,event,instance,instancesCount;
                 const ReleaseManagerFactoryF = await ethers.getContractFactory("MockReleaseManagerFactory");
@@ -502,7 +510,7 @@ describe("Community", function () {
                 //-------------------------------------------------
                 
                 //
-                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [['group1_can_invoke','group1_can_endorse'], ['group2_can_invoke','group2_can_endorse']]);
+                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')], [rolesIndex.get('group2_can_invoke'),rolesIndex.get('group2_can_endorse')]]);
                 rc = await tx.wait(); // 0ms, as tx is already confirmed
                 event = rc.events.find(event => event.event === 'InstanceCreated');
                 [instance, instancesCount] = event.args;
@@ -556,38 +564,41 @@ describe("Community", function () {
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.address,
                     funcHexademicalStr,
-                    'group1_can_invoke',
-                    'group1_can_endorse',
+                    rolesIndex.get('group1_can_invoke'),
+                    rolesIndex.get('group1_can_endorse'),
                     1, //uint256 minimum,
                     1 //uint256 fraction
                     ,
                 )
                 
+                let rndMinium = 221;
+                let rndFraction = 331;
                 await expect(
                     ControlContract.connect(owner).addMethod(
                         ERC20Mintable.address,
                         funcHexademicalStr,
-                        'group2_can_invoke',
-                        'group2_can_endorse',
-                        221, //uint256 minimum,
-                        331 //uint256 fraction
+                        rolesIndex.get('group2_can_invoke'),
+                        rolesIndex.get('group2_can_endorse'),
+                        rndMinium, //uint256 minimum,
+                        rndFraction //uint256 fraction
                         ,
                     )
-                ).to.be.revertedWith("Such method has already registered with another minimum and fraction");
+                ).to.be.revertedWith(`MethodAlreadyRegistered("${funcHexademicalStr}", ${rndMinium}, ${rndFraction})`);
                 
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.address,
                     funcHexademicalStr,
-                    'group2_can_invoke',
-                    'group2_can_endorse',
+                    rolesIndex.get('group2_can_invoke'),
+                    rolesIndex.get('group2_can_endorse'),
                     1, //uint256 minimum,
                     1 //uint256 fraction
                     ,
                 );
                 
-                var invokeID,invokeIDWei; 
+                var invokeID,invokeIDWei,currentGroupIndex; 
                 await ControlContract.connect(accountOne).heartbeat();
                 
+                currentGroupIndex = await ControlContract.getCurrentGroupIndex();
                 // now active is group1
                 // group 2 can not endorse or invoke
                 await expect(
@@ -597,7 +608,7 @@ describe("Community", function () {
                         memoryParamsHexademicalStr //string memory params
                         ,
                     )
-                ).to.be.revertedWith("Sender is out of current owner group");
+                ).to.be.revertedWith(`SenderIsOutOfCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
 
                 // pass groupTimeoutActivity = 30 days + extra seconds
                 // NOTE: next transaction after advanceTimeAndBlock can be in block with +1or+0 seconds blocktimestamp. so in invoke we get the exact groupTimeoutActivity pass. in the end of period group is still have ownership.
@@ -615,6 +626,7 @@ describe("Community", function () {
                 //return ownership by accountOne for group1
                 await ControlContract.connect(accountOne).heartbeat();
 
+                currentGroupIndex = await ControlContract.getCurrentGroupIndex();
                 // now active is group1
                 // group 2 can not endorse or invoke
                 await expect(
@@ -624,7 +636,7 @@ describe("Community", function () {
                         memoryParamsHexademicalStr //string memory params
                         ,
                     )
-                ).to.be.revertedWith("Sender is out of current owner group");
+                ).to.be.revertedWith(`SenderIsOutOfCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
 
                 
             });
@@ -634,8 +646,8 @@ describe("Community", function () {
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.address,
                     funcHexademicalStr,
-                    'group1_can_invoke',
-                    'group1_can_endorse',
+                    rolesIndex.get('group1_can_invoke'),
+                    rolesIndex.get('group1_can_endorse'),
                     1, //uint256 minimum,
                     1 //uint256 fraction
                     ,
@@ -643,13 +655,14 @@ describe("Community", function () {
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.address,
                     funcHexademicalStr,
-                    'group2_can_invoke',
-                    'group2_can_endorse',
+                    rolesIndex.get('group2_can_invoke'),
+                    rolesIndex.get('group2_can_endorse'),
                     1, //uint256 minimum,
                     1 //uint256 fraction
                     ,
                 )
 
+                let currentGroupIndex = await ControlContract.getCurrentGroupIndex();
                 await expect(
                     ControlContract.connect(accountThree).invoke(
                         ERC20Mintable.address,
@@ -657,7 +670,7 @@ describe("Community", function () {
                         memoryParamsHexademicalStr //string memory params
                         ,
                     )
-                ).to.be.revertedWith("Sender is out of current owner group");
+                ).to.be.revertedWith(`SenderIsOutOfCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
 
                 await network.provider.send("evm_increaseTime", [parseInt(groupTimeoutActivity)+10]);
                 await network.provider.send("evm_mine");
@@ -677,8 +690,8 @@ describe("Community", function () {
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.address,
                     funcHexademicalStr,
-                    'group1_can_invoke',
-                    'group1_can_endorse',
+                    rolesIndex.get('group1_can_invoke'),
+                    rolesIndex.get('group1_can_endorse'),
                     1, //uint256 minimum,
                     1 //uint256 fraction
                     ,
@@ -686,8 +699,8 @@ describe("Community", function () {
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.address,
                     funcHexademicalStr,
-                    'group2_can_invoke',
-                    'group2_can_endorse',
+                    rolesIndex.get('group2_can_invoke'),
+                    rolesIndex.get('group2_can_endorse'),
                     1, //uint256 minimum,
                     1 //uint256 fraction
                     ,
@@ -706,11 +719,11 @@ describe("Community", function () {
                 let invokeIDWeiWrong = 123123;
                 await expect(
                     accountOne.sendTransaction({to: ControlContract.address, value: invokeIDWeiWrong})
-                ).to.be.revertedWith("Such invokeID does not exist");
+                ).to.be.revertedWith(`UnknownInvokeId(0)`);
 
                 await expect(
                     ControlContract.connect(accountTwo).endorse(invokeIDWeiWrong)
-                ).to.be.revertedWith("Such invokeID does not exist");
+                ).to.be.revertedWith(`UnknownInvokeId(${invokeIDWeiWrong})`);
 
                 // group2 membbers still owner of contract and still can invoke
                 await ControlContract.connect(accountThree).invoke(
