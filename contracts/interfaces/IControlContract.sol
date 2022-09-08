@@ -3,9 +3,6 @@ pragma solidity ^0.8.11;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import "./ICommunity.sol";
-
-
 interface IControlContract {
     
     struct Operation {
@@ -16,7 +13,7 @@ interface IControlContract {
         uint256 fraction;
         EnumerableSetUpgradeable.AddressSet endorsedAccounts;
         bool proceed;
-        string proceededRole;
+        uint8 proceededRole;
         bool success;
         bytes msg;
         bool exists;
@@ -44,12 +41,14 @@ interface IControlContract {
 
 
     struct GroupRolesSetting {
-        string invokeRole;
-        string endorseRole;
+        uint8 invokeRole;
+        uint8 endorseRole;
     }
 
     function init(
-        ICommunity communityAddr,
-        GroupRolesSetting[] memory groupRoles
+        address communityAddr,
+        GroupRolesSetting[] memory groupRoles,
+        address costManager,
+        address producedBy
     ) external;
 }
