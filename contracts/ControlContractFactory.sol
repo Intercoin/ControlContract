@@ -72,7 +72,7 @@ contract ControlContractFactory is CostManagerFactoryHelper, ReleaseManagerHelpe
 
         _produce(instance);
 
-        IControlContract(instance).init(communityAddr, groupRoles, costManager);
+        IControlContract(instance).init(communityAddr, groupRoles, costManager, msg.sender);
 
         Ownable(instance).transferOwnership(msg.sender);
         

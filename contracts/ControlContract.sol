@@ -6,26 +6,19 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC1820RegistryUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777SenderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155ReceiverUpgradeable.sol";
-
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
-
-/////import "./interfaces/ICommunity.sol";
 import "@artman325/community/contracts/interfaces/ICommunity.sol";
 import "./interfaces/IControlContract.sol";
-
 import "./lib/StringUtils.sol";
-
 import "releasemanager/contracts/CostManagerHelper.sol";
-//import "hardhat/console.sol";
 
 contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable, IERC777SenderUpgradeable, IERC1155ReceiverUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, IControlContract, CostManagerHelper {
     
@@ -40,6 +33,13 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     uint256 internal constant fractionDiv = 1e10;
     uint256 internal constant groupTimeoutActivity = 2_592_000; // 30 days
 
+    uint8 internal constant OPERATION_SHIFT_BITS = 240;  // 256 - 16
+    // Constants representing operations
+    uint8 internal constant OPERATION_INITIALIZE = 0x0;
+    uint8 internal constant OPERATION_INVOKE = 0x1;
+    uint8 internal constant OPERATION_ENDORSE = 0x2;
+    uint8 internal constant OPERATION_ADD_METHOD = 0x3;
+
     address communityAddress;
     uint256 internal currentGroupIndex;
     uint256 private maxGroupIndex;
@@ -51,16 +51,16 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     
     error RoleDoesNotExists(uint8 roleid);
     error MethodAlreadyRegistered(string method, uint256 minimum, uint256 fraction);
-    error UnknownInvokeId(uint256 unvokeID); //'Such invokeID does not exist'
-    error UnknownMethod(address contractAddress, string method); // 'Such method does not exists'
-    error MissingInvokeRole(address sender); //"Sender has not in Endorse role"
-    error MissingEndorseRole(address sender); //"Sender has not in Endorse role"
-    error TxAlreadyEndorced(address sender); // "Sender is already endorse this transaction"
-    error TxAlreadyExecute(uint256 invokeID); // "Transaction have already executed"
-    error EmptyCommunityAddress(); //"Community address can not be zero"
-    error NoGroups(); //"need at least one group"
-    error RolesExistsOrInvokeEqualEndorse();//"Role is already exists or invokeRole equal endorseRole"
-    error SenderIsOutOfCurrentOwnerGroup(address sender, uint256 currentGroupIndex); // "Sender is out of current owner group"
+    error UnknownInvokeId(uint256 unvokeID);
+    error UnknownMethod(address contractAddress, string method);
+    error MissingInvokeRole(address sender);
+    error MissingEndorseRole(address sender);
+    error TxAlreadyEndorced(address sender);
+    error TxAlreadyExecute(uint256 invokeID);
+    error EmptyCommunityAddress();
+    error NoGroups();
+    error RolesExistsOrInvokeEqualEndorse();
+    error SenderIsOutOfCurrentOwnerGroup(address sender, uint256 currentGroupIndex);
 
     //----------------------------------------------------
     // modifiers section 
@@ -161,13 +161,15 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
      * @param communityAddr community address
      * @param groupRoles tuples of GroupRolesSetting
      * @param costManager costManager address
+     * @param producedBy producedBy address
      * @custom:calledby factory
      * @custom:shortd initialize while factory produce
      */
     function init(
         address communityAddr,
         GroupRolesSetting[] memory groupRoles,
-        address costManager
+        address costManager,
+        address producedBy
     )
         public 
         initializer
@@ -222,6 +224,12 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC777Token"), address(this));
         _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC777TokensSender"), address(this));
         _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC777TokensRecipient"), address(this));
+
+        _accountForOperation(
+            OPERATION_INITIALIZE << OPERATION_SHIFT_BITS,
+            uint256(uint160(producedBy)),
+            0
+        );
     }
     
     /**
@@ -263,6 +271,11 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         
         groups[currentGroupIndex].operations[invokeID].exists = true;
         
+        _accountForOperation(
+            OPERATION_INVOKE << OPERATION_SHIFT_BITS,
+            uint256(uint160(contractAddress)),
+            0
+        );
     }
     
     /**
@@ -327,6 +340,11 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         methods[k].invokeRolesAllowed.add(roleIDs[invokeRoleId]);
         methods[k].endorseRolesAllowed.add(roleIDs[endorseRoleId]);
         
+        _accountForOperation(
+            OPERATION_ADD_METHOD << OPERATION_SHIFT_BITS,
+            uint256(uint160(contractAddress)),
+            0
+        );
     }
 
     /**
@@ -429,7 +447,6 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         view 
         returns(uint256 index) 
     {
-
         index = currentGroupIndex;
         if (groups[currentGroupIndex].lastSeenTime + groupTimeoutActivity < block.timestamp) {
             index = currentGroupIndex + (
@@ -497,6 +514,12 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
                 emit OperationExecuted(invokeID, uint40(invokeID));
             }
         }
+
+        _accountForOperation(
+            OPERATION_ENDORSE << OPERATION_SHIFT_BITS,
+            uint256(uint160(_msgSender())),
+            uint256(uint160(operation.addr))
+        );
     }
  
     
