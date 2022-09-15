@@ -3,15 +3,15 @@ pragma solidity ^0.8.11;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@artman325/releasemanager/contracts/CostManagerFactoryHelper.sol";
+import "@artman325/releasemanager/contracts/ReleaseManagerHelper.sol";
 import "./interfaces/IControlContract.sol";
-import "releasemanager/contracts/CostManagerFactoryHelper.sol";
-import "releasemanager/contracts/ReleaseManagerHelper.sol";
 /**
 ****************
 FACTORY CONTRACT
 ****************
 
-Although this code is available for viewing on GitHub and Etherscan, the general public is NOT given a license to freely deploy smart contracts based on this code, on any blockchains.
+Although this code is available for viewing on GitHub and here, the general public is NOT given a license to freely deploy smart contracts based on this code, on any blockchains.
 
 To prevent confusion and increase trust in the audited code bases of smart contracts we produce, we intend for there to be only ONE official Factory address on the blockchain producing the corresponding smart contracts, and we are going to point a blockchain domain name at it.
 
@@ -49,8 +49,9 @@ This Agreement does not grant you any right in any trademark or logo of Develope
 
 LINK REQUIREMENTS.
 
-Operators of any Websites and Apps which make use of smart contracts based on this code must conspicuously include the following phrase in their website, featuring a clickable link that takes users to nftremix.com:
-"Visit https://nftremix.com to release your own NFT collection."
+Operators of any Websites and Apps which make use of smart contracts based on this code must conspicuously include the following phrase in their website, featuring a clickable link that takes users to intercoin.app:
+
+"Visit https://intercoin.app to launch your own NFTs, DAOs and other Web3 solutions."
 
 STAKING OR SPENDING REQUIREMENTS.
 
@@ -58,7 +59,7 @@ In the future, Developer may begin requiring staking or spending of Intercoin to
 
 CUSTOM ARRANGEMENTS.
 
-Reach out to us at intercoin.org if you are looking to obtain Intercoin tokens in bulk, remove link requirements forever, remove staking requirements forever, or get custom work done with your NFT projects.
+Reach out to us at intercoin.org if you are looking to obtain Intercoin tokens in bulk, remove link requirements forever, remove staking requirements forever, or get custom work done with your decentralized projects.
 
 ENTIRE AGREEMENT
 
