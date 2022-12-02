@@ -139,9 +139,11 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     {
         bool s = false;
         bytes32 k = keccak256(abi.encodePacked(contractAddress,method));
-        uint8[] memory roles = ICommunity(communityAddress).getRoles(sender);
-        for (uint256 i = 0; i < roles.length; i++) {
-            if (methods[k].invokeRolesAllowed.contains(roleIDs[roles[i]])) {
+        address[] memory addrs = new address[](1);
+        addrs[0] = sender;
+        uint8[][] memory roles = ICommunity(communityAddress).getRoles(addrs);
+        for (uint256 i = 0; i < roles[0].length; i++) {
+            if (methods[k].invokeRolesAllowed.contains(roleIDs[roles[0][i]])) {
                 s = true;
             }
         }
@@ -427,13 +429,15 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     
         uint256 len = 0;
         uint256 ii = 0;
-        
-        uint8[] memory roles = ICommunity(communityAddress).getRoles(_msgSender());
+        address[] memory addrs = new address[](1);
+        addrs[0] = _msgSender();
+
+        uint8[][] memory roles = ICommunity(communityAddress).getRoles(addrs);
         for (uint256 i = 0; i < maxGroupIndex; i++) {
-            for (uint256 j = 0; j < roles.length; j++) {
+            for (uint256 j = 0; j < roles[0].length; j++) {
                 if (
-                    groups[i].invokeRoles.contains(roleIDs[roles[j]]) ||
-                    groups[i].endorseRoles.contains(roleIDs[roles[j]])
+                    groups[i].invokeRoles.contains(roleIDs[roles[0][j]]) ||
+                    groups[i].endorseRoles.contains(roleIDs[roles[0][j]])
                 ) {
                     len += 1;
                 }
@@ -442,10 +446,10 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         
         uint256[] memory userRoleIndexes = new uint256[](len);
         for (uint256 i = 0; i < maxGroupIndex; i++) {
-            for (uint256 j = 0; j < roles.length; j++) {
+            for (uint256 j = 0; j < roles[0].length; j++) {
                 if (
-                    groups[i].invokeRoles.contains(roleIDs[roles[j]]) ||
-                    groups[i].endorseRoles.contains(roleIDs[roles[j]])
+                    groups[i].invokeRoles.contains(roleIDs[roles[0][j]]) ||
+                    groups[i].endorseRoles.contains(roleIDs[roles[0][j]])
                 ) {
                     
                     userRoleIndexes[ii] = i;
@@ -606,19 +610,22 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         view 
         returns(uint8[] memory) 
     {
-        uint8[] memory roles = ICommunity(communityAddress).getRoles(sender);
+        address[] memory addrs = new address[](1);
+        addrs[0] = sender;
+
+        uint8[][] memory roles = ICommunity(communityAddress).getRoles(addrs);
         uint256 len;
 
         for (uint256 i = 0; i < roles.length; i++) {
-            if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[i]])) {
+            if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[0][i]])) {
                 len += 1;
             }
         }
         uint8[] memory list = new uint8[](len);
         uint256 j = 0;
-        for (uint256 i = 0; i < roles.length; i++) {
-            if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[i]])) {
-                list[j] = roles[i];
+        for (uint256 i = 0; i < roles[0].length; i++) {
+            if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[0][i]])) {
+                list[j] = roles[0][i];
                 j += 1;
             }
         }
