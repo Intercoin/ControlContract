@@ -117,7 +117,7 @@ describe("Community", function () {
 
         var ControlContractImpl = await ControlContractF.connect(owner).deploy();
         CommunityMock = await CommunityMockF.connect(owner).deploy();
-        ControlContractFactory = await ControlContractFactoryF.connect(owner).deploy(ControlContractImpl.address, NO_COSTMANAGER);
+        ControlContractFactory = await ControlContractFactoryF.connect(owner).deploy(ControlContractImpl.address, NO_COSTMANAGER, releaseManager.address);
 
         // 
         const factoriesList = [ControlContractFactory.address];
@@ -127,8 +127,8 @@ describe("Community", function () {
                 1,//uint16 releaseTag; 
                 "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
             ]
-        ]
-        await ControlContractFactory.connect(owner).registerReleaseManager(releaseManager.address);
+        ];
+
         await releaseManager.connect(owner).newRelease(factoriesList, factoryInfo);
 
     });
@@ -366,7 +366,7 @@ describe("Community", function () {
 
                 let ControlContractMockF = await ethers.getContractFactory("ControlContractMock");    
                 var ControlContractMockImpl = await ControlContractMockF.connect(owner).deploy();
-                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER);
+                
 
                 await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('group1_can_invoke')]);
                 await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('group1_can_endorse')]);
@@ -385,6 +385,8 @@ describe("Community", function () {
                 [instance, instancesCount] = event.args;
                 let releaseManager = await ethers.getContractAt("MockReleaseManager",instance);
                 
+                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER, releaseManager.address);
+                
                 // 
                 const factoriesList = [ControlContractFactoryMock.address];
                 const factoryInfo = [
@@ -393,8 +395,8 @@ describe("Community", function () {
                         1,//uint16 releaseTag; 
                         "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
                     ]
-                ]
-                await ControlContractFactoryMock.connect(owner).registerReleaseManager(releaseManager.address);
+                ];
+
                 await releaseManager.connect(owner).newRelease(factoriesList, factoryInfo);
                 //-------------------------------------------------
 
@@ -475,7 +477,6 @@ describe("Community", function () {
 
                 let ControlContractMockF = await ethers.getContractFactory("ControlContractMock");    
                 var ControlContractMockImpl = await ControlContractMockF.connect(owner).deploy();
-                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER);
 
                 await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('group1_can_invoke')]);
                 await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('group1_can_endorse')]);
@@ -496,6 +497,8 @@ describe("Community", function () {
                 [instance, instancesCount] = event.args;
                 let releaseManager = await ethers.getContractAt("MockReleaseManager",instance);
                 
+                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER, releaseManager.address);
+
                 // 
                 const factoriesList = [ControlContractFactoryMock.address];
                 const factoryInfo = [
@@ -504,8 +507,8 @@ describe("Community", function () {
                         1,//uint16 releaseTag; 
                         "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
                     ]
-                ]
-                await ControlContractFactoryMock.connect(owner).registerReleaseManager(releaseManager.address);
+                ];
+
                 await releaseManager.connect(owner).newRelease(factoriesList, factoryInfo);
                 //-------------------------------------------------
                 

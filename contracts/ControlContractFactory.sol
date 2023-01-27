@@ -92,8 +92,10 @@ contract ControlContractFactory is CostManagerFactoryHelper, ReleaseManagerHelpe
     */
     constructor(
         address controlContractImpl,
-        address costManager
+        address costManager,
+        address releaseManager
     ) 
+        ReleaseManagerHelper(releaseManager)
         CostManagerFactoryHelper(costManager)
     {
         controlContractImplementation = controlContractImpl;
