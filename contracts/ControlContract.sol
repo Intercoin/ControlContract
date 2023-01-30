@@ -529,7 +529,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     }
 
     /**
-     * @param invokeID invoke result of previous call to invoke()
+     * @param invokeID result of previous call to invoke()
      */
     function _endorse(
         uint256 invokeID
@@ -584,7 +584,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     }
     
     /**
-     * @param invokeID invoke result of previous call to invoke()
+     * @param invokeID result of previous call to invoke()
      */
     function execute(
         uint256 invokeID
@@ -690,7 +690,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     
     /**
      * generating pseudo-random id to be used as invokeID later
-     * @return invoke result of previous call to invoke()
+     * @return uint256 that can be used in other calls
      */
     function generateInvokeID(
     ) 
