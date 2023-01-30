@@ -127,10 +127,13 @@ contract ControlContractFactory is CostManagerFactoryHelper, ReleaseManagerHelpe
     * @custom:shortd creation СontrolContract instance
     * @param communityAddr community address
     * @param groupRoles tuples of GroupRolesSetting
+    * @param minimumDelay after last endorse, if minimumDelay = 0, operation executes immediately,
+    *    otherwise it requires another call to execute() after minimumDelay passed
     */
     function produce(
         address communityAddr,
-        IControlContract.GroupRolesSetting[] memory groupRoles
+        IControlContract.GroupRolesSetting[] memory groupRoles,
+        uint16 minimumDelay
     ) 
         public 
         returns (address instance) 
@@ -140,7 +143,7 @@ contract ControlContractFactory is CostManagerFactoryHelper, ReleaseManagerHelpe
 
         _produce(instance);
 
-        IControlContract(instance).init(communityAddr, groupRoles, costManager, msg.sender);
+        IControlContract(instance).init(communityAddr, groupRoles, minimumDelay, costManager, msg.sender);
 
         Ownable(instance).transferOwnership(msg.sender);
 
