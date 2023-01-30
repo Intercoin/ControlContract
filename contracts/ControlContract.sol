@@ -117,9 +117,9 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     mapping(bytes32 => Method) methods;
     mapping(uint256 => Group) internal groups;
     
-    error RoleDoesNotExist(uint8 roleid);
+    error RoleDoesNotExist(uint8 roleID);
     error MethodAlreadyRegistered(string method, uint256 minimum, uint256 fraction);
-    error UnknownInvokeId(uint256 unvokeID);
+    error UnknownInvokeId(uint256 invokeID);
     error UnknownMethod(address contractAddress, string method);
     error MissingInvokeRole(address sender);
     error MissingEndorseRole(address sender);
@@ -128,8 +128,8 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     error NotYetApproved(uint256 invokeID);
     error EmptyCommunityAddress();
     error NoGroups();
-    error RolesExistsOrInvokeEqualEndorse();
-    error SenderIsOutOfCurrentOwnerGroup(address sender, uint256 currentGroupIndex);
+    error RoleExistsOrInvokeEqualEndorse();
+    error SenderIsNotInCurrentOwnerGroup(address sender, uint256 currentGroupIndex);
 
     //----------------------------------------------------
     // modifiers section 
@@ -280,7 +280,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
                 (roleExists(groupRoles[i].endorseRole) == true) ||
                 (keccak256(abi.encodePacked(groupRoles[i].invokeRole)) == keccak256(abi.encodePacked(groupRoles[i].endorseRole)))
             ) {
-                revert RolesExistsOrInvokeEqualEndorse();
+                revert RoleExistsOrInvokeEqualEndorse();
             }
 
             groups[i].index = maxGroupIndex;
@@ -307,7 +307,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
      * @param contractAddress address of external token
      * @param method method of external token that would be executed
      * @param params params of external token's method
-     * @return invokeID identificator
+     * @return invokeID result of previous call to invoke()
      * @custom:calledby persons with invoke roles
      * @custom:shortd invoke methods
      */
@@ -350,7 +350,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     }
     
     /**
-     * @param invokeID invoke identificator
+     * @param invokeID result of previous call to invoke()
      * @custom:calledby persons with endorse roles
      * @custom:shortd endorse methods by invokeID
      */
@@ -386,10 +386,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     {
         bytes32 k = keccak256(abi.encodePacked(contractAddress,method));
         
-        if (
-            !roleExists(invokeRoleId) || 
-            !roleExists(invokeRoleId)
-        ) {
+        if (!roleExists(invokeRoleId)) {
             revert RoleDoesNotExist(invokeRoleId);
         }
         
@@ -444,7 +441,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
                 ) {
                     len += 1;
                 }
-          }
+            }
         }
         
         uint256[] memory userRoleIndexes = new uint256[](len);
@@ -480,7 +477,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         }
 
         if (!isBreak) {
-            revert SenderIsOutOfCurrentOwnerGroup(_msgSender(), currentGroupIndex);
+            revert SenderIsNotInCurrentOwnerGroup(_msgSender(), currentGroupIndex);
         }
         
         if (currentGroupIndex != itGroupIndex) {
@@ -532,7 +529,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     }
 
     /**
-     * @param invokeID invoke identificator
+     * @param invokeID invoke result of previous call to invoke()
      */
     function _endorse(
         uint256 invokeID
@@ -587,7 +584,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     }
     
     /**
-     * @param invokeID invoke identificator
+     * @param invokeID invoke result of previous call to invoke()
      */
     function execute(
         uint256 invokeID
@@ -678,22 +675,22 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     }
     
     /**
-     * @param roleId role id
+     * @param roleID role id
      * @return ret true if roleName exists in general list
      */
     function roleExists(
-        uint8 roleId
+        uint8 roleID
     ) 
         internal 
         view
         returns(bool ret) 
     {
-        ret = (roleIDs[roleId] == 0) ? false : true;
+        ret = (roleIDs[roleID] == 0) ? false : true;
     }
     
     /**
-     * generating pseudo-random id used as invoke identificator
-     * @return invoke identificator
+     * generating pseudo-random id to be used as invokeID later
+     * @return invoke result of previous call to invoke()
      */
     function generateInvokeID(
     ) 
