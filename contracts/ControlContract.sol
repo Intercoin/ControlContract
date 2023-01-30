@@ -574,7 +574,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             }
             //---
             if (operation.endorsedAccounts.length() >= max) {
-                operation.approved = block.timestamp;
+                operation.approvedTime = block.timestamp;
             }
             if (minimumDelay == 0) {
                 execute(invokeID);
@@ -597,13 +597,13 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         nonReentrant()
     {
         Operation storage operation = groups[currentGroupIndex].operations[invokeID]);
-        if (operation.approved == 0) {
+        if (operation.approvedTime == 0) {
             revert NotYetApproved(invokeID);
         }
         if (operation.executed == true) {
             revert AlreadyExecuted(invokeID);
         }
-        if (block.timestamp - operation.approved < minimumDelay) {
+        if (block.timestamp - operation.approvedTime < minimumDelay) {
             revert MinimumDelayMustElapse(invokeID);
         }
         (
