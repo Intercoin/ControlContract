@@ -104,8 +104,10 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     uint8 internal constant OPERATION_INITIALIZE = 0x0;
     uint8 internal constant OPERATION_INVOKE = 0x1;
     uint8 internal constant OPERATION_ENDORSE = 0x2;
-    uint8 internal constant OPERATION_ADD_METHOD = 0x3;
+    uint8 internal constant OPERATION_EXECUTE = 0x3;
+    uint8 internal constant OPERATION_ADD_METHOD = 0x4;
 
+    bool autoExecuteOnFinalEndorse = false;
     address communityAddress;
     uint256 internal currentGroupIndex;
     uint256 private maxGroupIndex;
@@ -115,14 +117,15 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     mapping(bytes32 => Method) methods;
     mapping(uint256 => Group) internal groups;
     
-    error RoleDoesNotExists(uint8 roleid);
+    error RoleDoesNotExist(uint8 roleid);
     error MethodAlreadyRegistered(string method, uint256 minimum, uint256 fraction);
     error UnknownInvokeId(uint256 unvokeID);
     error UnknownMethod(address contractAddress, string method);
     error MissingInvokeRole(address sender);
     error MissingEndorseRole(address sender);
-    error TxAlreadyEndorced(address sender);
-    error TxAlreadyExecute(uint256 invokeID);
+    error AlreadyEndorsed(address sender);
+    error AlreadyExecuted(uint256 invokeID);
+    error NotYetApproved(uint256 invokeID);
     error EmptyCommunityAddress();
     error NoGroups();
     error RolesExistsOrInvokeEqualEndorse();
@@ -387,7 +390,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             !roleExists(invokeRoleId) || 
             !roleExists(invokeRoleId)
         ) {
-            revert RoleDoesNotExists(invokeRoleId);
+            revert RoleDoesNotExist(invokeRoleId);
         }
         
         // require(methods[k].exists == false, "Such method has already registered");
@@ -547,11 +550,11 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         }
         
         if (operation.endorsedAccounts.contains(_msgSender()) == true) {
-            revert TxAlreadyEndorced(_msgSender());
+            revert AlreadyEndorsed(_msgSender());
         }
         
-        if (operation.proceed == true) {
-            revert TxAlreadyExecute(invokeID);
+        if (operation.executed == true) {
+            revert AlreadyExecuted(invokeID);
         }
         
         operation.endorsedAccounts.add(_msgSender());
@@ -569,19 +572,10 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             }
             //---
             if (operation.endorsedAccounts.length() >= max) {
-                operation.proceed = true;
-                (
-                    operation.success, 
-                    operation.msg
-                ) = operation.addr.call(
-                    (
-                        string(abi.encodePacked(
-                            operation.method, 
-                            operation.params
-                        ))
-                    ).fromHex()
-                );
-                emit OperationExecuted(invokeID, uint40(invokeID));
+                operation.approved = true;
+            }
+            if (autoExecuteOnFinalEndorse) {
+                execute(invokeID);
             }
         }
 
@@ -590,6 +584,35 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             uint256(uint160(_msgSender())),
             uint256(uint160(operation.addr))
         );
+    }
+    
+    /**
+     * @param invokeID invoke identificator
+     */
+    function execute(
+        uint256 invokeID
+    )
+        nonReentrant()
+    {
+        Operation storage operation = groups[currentGroupIndex].operations[invokeID]);
+        if (!operation.approved) {
+            revert NotYetApproved(invokeID);
+        }
+        if (operation.executed == true) {
+            revert AlreadyExecuted(invokeID);
+        }
+        (
+            operation.success, 
+            operation.msg
+        ) = operation.addr.call(
+            (
+                string(abi.encodePacked(
+                    operation.method, 
+                    operation.params
+                ))
+            ).fromHex()
+        );
+        emit OperationExecuted(invokeID, uint40(invokeID));
     }
  
     
