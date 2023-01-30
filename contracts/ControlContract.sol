@@ -107,7 +107,8 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     uint8 internal constant OPERATION_EXECUTE = 0x3;
     uint8 internal constant OPERATION_ADD_METHOD = 0x4;
 
-    bool autoExecuteOnFinalEndorse = false;
+    uint16 minimumDelay = 0;
+
     address communityAddress;
     uint256 internal currentGroupIndex;
     uint256 private maxGroupIndex;
@@ -126,6 +127,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     error AlreadyEndorsed(address sender);
     error AlreadyExecuted(uint256 invokeID);
     error NotYetApproved(uint256 invokeID);
+    error MinimumDelayMustElapse(uint256 invokeID);
     error EmptyCommunityAddress();
     error NoGroups();
     error RoleExistsOrInvokeEqualEndorse();
@@ -232,6 +234,8 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
      * @param communityAddr community address
      * @param groupRoles tuples of GroupRolesSetting
      * @param costManager costManager address
+     * @param minimumDelay after last endorse, if minimumDelay = 0, operation executes immediately,
+     *    otherwise it requires another call to execute() after minimumDelay passed
      * @param producedBy producedBy address
      * @custom:calledby factory
      * @custom:shortd initialize while factory produce
@@ -239,6 +243,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     function init(
         address communityAddr,
         GroupRolesSetting[] memory groupRoles,
+        uint16 minimumDelay,
         address costManager,
         address producedBy
     )
@@ -569,9 +574,9 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             }
             //---
             if (operation.endorsedAccounts.length() >= max) {
-                operation.approved = true;
+                operation.approved = block.timestamp;
             }
-            if (autoExecuteOnFinalEndorse) {
+            if (minimumDelay == 0) {
                 execute(invokeID);
             }
         }
@@ -592,11 +597,14 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         nonReentrant()
     {
         Operation storage operation = groups[currentGroupIndex].operations[invokeID]);
-        if (!operation.approved) {
+        if (operation.approved == 0) {
             revert NotYetApproved(invokeID);
         }
         if (operation.executed == true) {
             revert AlreadyExecuted(invokeID);
+        }
+        if (block.timestamp - operation.approved < minimumDelay) {
+            revert MinimumDelayMustElapse(invokeID);
         }
         (
             operation.success, 
