@@ -12,7 +12,7 @@ interface IControlContract {
         uint256 minimum;
         uint256 fraction;
         EnumerableSetUpgradeable.AddressSet endorsedAccounts;
-        bool approved;
+        uint64 approvedTime;
         bool executed;
         uint8 proceededRole;
         bool success;
