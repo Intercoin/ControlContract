@@ -107,7 +107,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     uint8 internal constant OPERATION_EXECUTE = 0x3;
     uint8 internal constant OPERATION_ADD_METHOD = 0x4;
 
-    uint16 minimumDelay = 0;
+    uint16 minimumDelay;
 
     address communityAddress;
     uint256 internal currentGroupIndex;
@@ -234,7 +234,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
      * @param communityAddr community address
      * @param groupRoles tuples of GroupRolesSetting
      * @param costManager costManager address
-     * @param minimumDelay after last endorse, if minimumDelay = 0, operation executes immediately,
+     * @param minDelay minimum delay after last endorse, if minDelay = 0, operation executes immediately,
      *    otherwise it requires another call to execute() after minimumDelay passed
      * @param producedBy producedBy address
      * @custom:calledby factory
@@ -243,7 +243,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     function init(
         address communityAddr,
         GroupRolesSetting[] memory groupRoles,
-        uint16 minimumDelay,
+        uint16 minDelay,
         address costManager,
         address producedBy
     )
@@ -258,6 +258,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         
         communityAddress = communityAddr;
         lastRoleIndex = 0;
+        minimumDelay = minDelay;
         
         /*
         [   //  invokeRole         endorseRole
@@ -574,7 +575,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             }
             //---
             if (operation.endorsedAccounts.length() >= max) {
-                operation.approvedTime = block.timestamp;
+                operation.approvedTime = uint64(block.timestamp);
             }
             if (minimumDelay == 0) {
                 execute(invokeID);
@@ -594,9 +595,10 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     function execute(
         uint256 invokeID
     )
+        public
         nonReentrant()
     {
-        Operation storage operation = groups[currentGroupIndex].operations[invokeID]);
+        Operation storage operation = groups[currentGroupIndex].operations[invokeID];
         if (operation.approvedTime == 0) {
             revert NotYetApproved(invokeID);
         }
