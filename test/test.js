@@ -86,6 +86,10 @@ describe("Community", function () {
       
     ]);
 
+    const WITHOUT_DELAY = ZERO;
+    
+
+
     var ControlContractFactory;
     var ControlContract;
     var CommunityMock;
@@ -137,17 +141,17 @@ describe("Community", function () {
         
         //['sub-admins','members']
         await expect(
-            ControlContractFactory.connect(owner).produce(ZERO_ADDRESS, [[1,2]])
+            ControlContractFactory.connect(owner).produce(ZERO_ADDRESS, [[1,2]], WITHOUT_DELAY)
         ).to.be.revertedWith("EmptyCommunityAddress()");
 
         await expect(
-            ControlContractFactory.connect(owner).produce(CommunityMock.address, [])
+            ControlContractFactory.connect(owner).produce(CommunityMock.address, [], WITHOUT_DELAY)
         ).to.be.revertedWith("NoGroups()");
 
         //['sub-admins','members'],['admins','sub-admins']
         await expect(
-            ControlContractFactory.connect(owner).produce(CommunityMock.address, [[1,2],[3,1]])
-        ).to.be.revertedWith("RolesExistsOrInvokeEqualEndorse()");
+            ControlContractFactory.connect(owner).produce(CommunityMock.address, [[1,2],[3,1]], WITHOUT_DELAY)
+        ).to.be.revertedWith("RoleExistsOrInvokeEqualEndorse()");
 
     });
 
@@ -155,9 +159,9 @@ describe("Community", function () {
 
         let instancesCountBefore = await ControlContractFactory.instancesCount();
 
-        await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[1,2]]);
-        await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[3,4]]);
-        await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[5,6]]);
+        await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[1,2]], WITHOUT_DELAY);
+        await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[3,4]], WITHOUT_DELAY);
+        await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[5,6]], WITHOUT_DELAY);
         
         let instancesCountAfter = await ControlContractFactory.instancesCount();
         expect(
@@ -174,7 +178,7 @@ describe("Community", function () {
 
                 let tx,rc,event,instance,instancesCount;
                 //
-                tx = await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('sub-admins'),rolesIndex.get('members')]]);
+                tx = await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('sub-admins'),rolesIndex.get('members')]], WITHOUT_DELAY);
                 rc = await tx.wait(); // 0ms, as tx is already confirmed
                 event = rc.events.find(event => event.event === 'InstanceCreated');
                 [instance, instancesCount] = event.args;
@@ -222,6 +226,7 @@ describe("Community", function () {
                 [invokeID,,,,] = event.args;
 
                 await ControlContract.connect(accountTwo).endorse(invokeID);
+
                 await ControlContract.connect(accountThree).endorse(invokeID);
                 
                 var counterAfter = await SomeExternalMock.viewCounter();
@@ -281,7 +286,7 @@ describe("Community", function () {
 
                 await expect(
                     accountTwo.sendTransaction({to: ControlContract.address, value: invokeIDWei, gasLimit:10000000})
-                ).to.be.revertedWith(`TxAlreadyEndorced("${accountTwo.address}")`);
+                ).to.be.revertedWith(`AlreadyEndorsed("${accountTwo.address}")`);
 
                 await expect(
                     accountThree.sendTransaction({to: ControlContract.address, value: invokeIDWei+2, gasLimit:80000})
@@ -401,7 +406,7 @@ describe("Community", function () {
                 //-------------------------------------------------
 
                 //
-                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')]]);
+                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')]], WITHOUT_DELAY);
                 rc = await tx.wait(); // 0ms, as tx is already confirmed
                 event = rc.events.find(event => event.event === 'InstanceCreated');
                 [instance, instancesCount] = event.args;
@@ -513,7 +518,7 @@ describe("Community", function () {
                 //-------------------------------------------------
                 
                 //
-                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')], [rolesIndex.get('group2_can_invoke'),rolesIndex.get('group2_can_endorse')]]);
+                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')], [rolesIndex.get('group2_can_invoke'),rolesIndex.get('group2_can_endorse')]], WITHOUT_DELAY);
                 rc = await tx.wait(); // 0ms, as tx is already confirmed
                 event = rc.events.find(event => event.event === 'InstanceCreated');
                 [instance, instancesCount] = event.args;
@@ -611,7 +616,8 @@ describe("Community", function () {
                         memoryParamsHexademicalStr //string memory params
                         ,
                     )
-                ).to.be.revertedWith(`SenderIsOutOfCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
+                ).to.be.revertedWith(`SenderIsNotInCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
+                                      
 
                 // pass groupTimeoutActivity = 30 days + extra seconds
                 // NOTE: next transaction after advanceTimeAndBlock can be in block with +1or+0 seconds blocktimestamp. so in invoke we get the exact groupTimeoutActivity pass. in the end of period group is still have ownership.
@@ -639,7 +645,7 @@ describe("Community", function () {
                         memoryParamsHexademicalStr //string memory params
                         ,
                     )
-                ).to.be.revertedWith(`SenderIsOutOfCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
+                ).to.be.revertedWith(`SenderIsNotInCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
 
                 
             });
@@ -673,7 +679,7 @@ describe("Community", function () {
                         memoryParamsHexademicalStr //string memory params
                         ,
                     )
-                ).to.be.revertedWith(`SenderIsOutOfCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
+                ).to.be.revertedWith(`SenderIsNotInCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
 
                 await network.provider.send("evm_increaseTime", [parseInt(groupTimeoutActivity)+10]);
                 await network.provider.send("evm_mine");
@@ -760,7 +766,7 @@ describe("Community", function () {
 
             let tx,rc,event,instance,instancesCount;
             //
-            tx = await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[1,2]]);
+            tx = await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[1,2]], WITHOUT_DELAY);
 
             rc = await tx.wait(); // 0ms, as tx is already confirmed
             event = rc.events.find(event => event.event === 'InstanceCreated');

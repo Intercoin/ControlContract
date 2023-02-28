@@ -20,9 +20,9 @@
     </h1>
     <div class='clearfix'>
       <div class='fl pad1y space-right2'>
-        <span class="strong">70% </span>
+        <span class="strong">75% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>7/10</span>
+        <span class='fraction'>9/12</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
@@ -30,14 +30,14 @@
         <span class='fraction'>0/0</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">60% </span>
+        <span class="strong">50% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>3/5</span>
+        <span class='fraction'>3/6</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">70% </span>
+        <span class="strong">75% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>7/10</span>
+        <span class='fraction'>9/12</span>
       </div>
     </div>
   </div>
@@ -92,7 +92,26 @@
 47
 48
 49
-50</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -106,17 +125,28 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">19×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">21×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">25×</span>
-<span class="cline-any cline-yes">25×</span>
-<span class="cline-any cline-yes">25×</span>
-<span class="cline-any cline-yes">25×</span>
+<span class="cline-any cline-yes">28×</span>
+<span class="cline-any cline-yes">28×</span>
+<span class="cline-any cline-yes">28×</span>
+<span class="cline-any cline-yes">28×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -130,14 +160,22 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">65×</span>
+<span class="cline-any cline-yes">71×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">65×</span>
+<span class="cline-any cline-yes">71×</span>
+<span class="cline-any cline-yes">71×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">71×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -147,21 +185,32 @@ pragma experimental ABIEncoderV2;
 &nbsp;
 &nbsp;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "../interfaces/ICommunity.sol";
+import "@artman325/community/contracts/interfaces/ICommunity.sol";
 &nbsp;
 contract CommunityMock is OwnableUpgradeable, ICommunity {
     
-    mapping(address =&gt; string[]) roles;
+    mapping(address =&gt; uint8[]) roles;
     uint256 count = 5;
     
-    function memberCount(string memory role) public override view returns(uint256) {
+<span class="fstat-no" title="function not covered" >    function initialize(</span>
+        address implState,
+        address implView,
+        address hook, 
+        address costManager, 
+        string memory name, 
+        string memory symbol
+    ) external {
+&nbsp;
+    }
+&nbsp;
+    function addressesCount(uint8/* roleIndex*/) public override view returns(uint256) {
         return count;
     }
-<span class="fstat-no" title="function not covered" >    function setMemberCount(uint256 _count) public returns(uint256) {</span>
+<span class="fstat-no" title="function not covered" >    function setMemberCount(uint256 _count) public {</span>
 <span class="cstat-no" title="statement not covered" >        count = _count</span>;
     }
     
-    function setRoles(address member, string[] memory _roles) public {
+    function setRoles(address member, uint8[] memory _roles) public {
         uint256 len;
         for(uint256 i = 0; i &lt; _roles.length; i++) {
             len = roles[member].length;
@@ -171,7 +220,7 @@ contract CommunityMock is OwnableUpgradeable, ICommunity {
         
     }
     
-    function getRoles(address member)public override view returns(string[] memory list){
+    function getRoles(address[] calldata members)public override view returns(uint8[][] memory list){
         // string[] memory list = new string[](5);
         // list[0] = 'owners';
         // list[1] = 'admins';
@@ -179,15 +228,23 @@ contract CommunityMock is OwnableUpgradeable, ICommunity {
         // list[3] = 'sub-admins';
         // list[4] = 'unkwnowns';
         
-        list = roles[member];
+        list = new uint8[][](members.length);
+&nbsp;
+        for(uint256 i = 0; i &lt; members.length; i++) {
+            list[i] = roles[members[i]];
+        }
+        
         
         return list;
         
     }
-<span class="fstat-no" title="function not covered" >    function getMember(string memory role) public override view returns(address[] memory){</span>
-<span class="cstat-no" title="statement not covered" >        address[] memory list = new address[](0);</span>
+&nbsp;
+<span class="fstat-no" title="function not covered" >    function getAddresses(uint8[] memory/* rolesIndex*/) public override pure returns(address[][] memory){</span>
+<span class="cstat-no" title="statement not covered" >        address[][]memory list = new address[][](0);</span>
 <span class="cstat-no" title="statement not covered" >        return list;</span>
     }
+&nbsp;
+   
     
 }
 &nbsp;</pre></td></tr>
@@ -196,7 +253,7 @@ contract CommunityMock is OwnableUpgradeable, ICommunity {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Mar 18 2022 17:44:44 GMT+0200 (Восточная Европа, стандартное время)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Wed Mar 01 2023 00:32:46 GMT+0200 (Восточная Европа, стандартное время)
 </div>
 </div>
 <script src="../../prettify.js"></script>

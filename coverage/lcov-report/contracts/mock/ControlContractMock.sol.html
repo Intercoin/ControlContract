@@ -22,22 +22,22 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>1/1</span>
+        <span class='fraction'>9/9</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>0/0</span>
+        <span class='fraction'>2/2</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>1/1</span>
+        <span class='fraction'>8/8</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>1/1</span>
+        <span class='fraction'>9/9</span>
       </div>
     </div>
   </div>
@@ -83,7 +83,39 @@
 38
 39
 40
-41</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -100,6 +132,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -121,6 +154,37 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// SPDX-License-Identifier: MIT
@@ -128,7 +192,7 @@ pragma solidity ^0.8.11;
 pragma experimental ABIEncoderV2;
 &nbsp;
 import "../ControlContract.sol";
-import "../interfaces/ICommunity.sol";
+import "@artman325/community/contracts/interfaces/ICommunity.sol";
 &nbsp;
 contract ControlContractMock is ControlContract {
    
@@ -139,9 +203,9 @@ contract ControlContractMock is ControlContract {
     // function getNow() public view returns(uint256) {
     //     return block.timestamp;
     // }
-    // function getCurrentGroupIndex() public view returns(uint256) {
-    //     return currentGroupIndex;
-    // }
+    function getCurrentGroupIndex() public view returns(uint256) {
+        return currentGroupIndex;
+    }
     
     // function getEndorseAllowedMock(address tokenAddr, string memory method, address sender) public view  returns(uint256[] memory list) {
       
@@ -162,6 +226,38 @@ contract ControlContractMock is ControlContract {
     //         }
     //     }
     // }
+&nbsp;
+    uint256 uint256Var;
+&nbsp;
+    function setInsideVar(uint256 i) 
+        public 
+    {
+        require(msg.sender == address(this), "able to call from itself only" );
+&nbsp;
+        uint256Var = i;
+    }
+&nbsp;
+    function getInsideVar(
+    ) 
+        public 
+        view 
+        returns(uint256 i)
+    {
+        return uint256Var;
+    }
+&nbsp;
+    function transferERC20(address token, address to, uint256 amount) public {
+        IERC20Upgradeable(token).transfer(to, amount);
+    }
+    function transferERC1155(address token, address to, uint256 id, uint256 amount) public {
+        IERC1155Upgradeable(token).safeTransferFrom(address(this), to, id, amount, ""); 
+    }
+    function transferERC777(address token, address to, uint256 amount) public {
+        IERC20Upgradeable(token).transfer(to, amount);
+    }
+    function transferERC721(address token, address to, uint256 amount) public {
+        IERC721Upgradeable(token).safeTransferFrom(address(this), to, amount); 
+    }
     
 }</pre></td></tr>
 </table></pre>
@@ -169,7 +265,7 @@ contract ControlContractMock is ControlContract {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Mar 18 2022 17:44:44 GMT+0200 (Восточная Европа, стандартное время)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Wed Mar 01 2023 00:32:46 GMT+0200 (Восточная Европа, стандартное время)
 </div>
 </div>
 <script src="../../prettify.js"></script>

@@ -575,11 +575,15 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             }
             //---
             if (operation.endorsedAccounts.length() >= max) {
+
                 operation.approvedTime = uint64(block.timestamp);
+
+                if (minimumDelay == 0) {
+                    _execute(invokeID);
+                }
+                break;
             }
-            if (minimumDelay == 0) {
-                execute(invokeID);
-            }
+            
         }
 
         _accountForOperation(
@@ -588,7 +592,6 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
             uint256(uint160(operation.addr))
         );
     }
-    
     /**
      * @param invokeID result of previous call to invoke()
      */
@@ -597,6 +600,14 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     )
         public
         nonReentrant()
+    {
+        _execute(invokeID);
+    }
+    
+    function _execute(
+        uint256 invokeID
+    )
+        internal
     {
         Operation storage operation = groups[currentGroupIndex].operations[invokeID];
         if (operation.approvedTime == 0) {
