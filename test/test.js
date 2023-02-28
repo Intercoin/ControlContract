@@ -358,6 +358,82 @@ describe("Community", function () {
 
         });
 
+        describe("simple test methods with delay execution ", function () {
+            var ControlContract;
+            const WITH_DELAY = 65000;  //max 2**16 = 65536
+            //var CommunityFactory;
+            beforeEach("deploying", async() => {
+
+                let tx,rc,event,instance,instancesCount;
+                //
+                tx = await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('sub-admins'),rolesIndex.get('members')]], WITH_DELAY);
+                rc = await tx.wait(); // 0ms, as tx is already confirmed
+                event = rc.events.find(event => event.event === 'InstanceCreated');
+                [instance, instancesCount] = event.args;
+                ControlContract = await ethers.getContractAt("ControlContractMock",instance);
+
+            });
+
+            it('with no params', async () => {
+                
+                await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('sub-admins')]);
+                await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('members')]);
+                await CommunityMock.setRoles(accountThree.address, [rolesIndex.get('members')]);
+                
+                var SomeExternalMockF = await ethers.getContractFactory("SomeExternalMock");
+                var SomeExternalMock = await SomeExternalMockF.connect(owner).deploy();
+
+                var counterBefore = await SomeExternalMock.viewCounter();
+                
+                let funcHexademicalStr = await SomeExternalMock.returnFuncSignatureHexadecimalString();
+                // await ControlContractInstance.allowInvoke('sub-admins',SomeExternalMockInstance.address,funcHexademicalStr,{ from: accountTen });
+                // await ControlContractInstance.allowEndorse('members',SomeExternalMockInstance.address,funcHexademicalStr,{ from: accountTen });
+                await ControlContract.connect(owner).addMethod(
+                    SomeExternalMock.address,
+                    funcHexademicalStr,
+                    rolesIndex.get('sub-admins'),
+                    rolesIndex.get('members'),
+                    2, //uint256 minimum,
+                    1 //uint256 fraction
+                    ,
+                )
+                var invokeID; 
+
+                let tx,rc,event;
+
+                tx = await ControlContract.connect(accountOne).invoke(
+                    SomeExternalMock.address,
+                    funcHexademicalStr,
+                    '' //string memory params
+                    ,
+                );
+                
+                rc = await tx.wait(); // 0ms, as tx is already confirmed
+                event = rc.events.find(event => event.event === 'OperationInvoked');
+                //invokeID, invokeIDWei, tokenAddr, method, params
+                [invokeID,,,,] = event.args;
+
+                await ControlContract.connect(accountTwo).endorse(invokeID);
+
+                await ControlContract.connect(accountThree).endorse(invokeID);
+                
+                var counterAfter = await SomeExternalMock.viewCounter();
+                
+                expect(counterAfter-counterBefore).to.be.eq(0);
+
+                // pass time
+                await network.provider.send("evm_increaseTime", [WITH_DELAY])
+                await network.provider.send("evm_mine") // this one will have 02:00 PM as its timestamp
+
+                await ControlContract.connect(accountThree).execute(invokeID);
+
+                var counterAfter2 = await SomeExternalMock.viewCounter();
+                
+                expect(counterAfter2-counterBefore).to.be.eq(1);
+                
+            });
+        });
+
         describe("example transferownersip", function () {
             var ControlContract;
             var groupTimeoutActivity;
