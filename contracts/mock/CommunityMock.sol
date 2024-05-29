@@ -2,9 +2,8 @@
 pragma solidity ^0.8.11;
 pragma experimental ABIEncoderV2;
 
-
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@artman325/community/contracts/interfaces/ICommunity.sol";
+import "@intercoin/community/contracts/interfaces/ICommunity.sol";
 
 contract CommunityMock is OwnableUpgradeable, ICommunity {
     
@@ -12,12 +11,13 @@ contract CommunityMock is OwnableUpgradeable, ICommunity {
     uint256 count = 5;
     
     function initialize(
-        address implState,
-        address implView,
-        address hook, 
-        address costManager, 
-        string memory name, 
-        string memory symbol
+        address hook,
+        address invitedHook,
+        address costManager,
+        address authorizedInviteManager,
+        string memory name,
+        string memory symbol,
+        string memory contractUri
     ) external {
 
     }
@@ -35,8 +35,6 @@ contract CommunityMock is OwnableUpgradeable, ICommunity {
             len = roles[member].length;
             roles[member].push(_roles[i]);
         }
-        
-        
     }
     
     function getRoles(address[] calldata members)public override view returns(uint8[][] memory list){
@@ -53,16 +51,40 @@ contract CommunityMock is OwnableUpgradeable, ICommunity {
             list[i] = roles[members[i]];
         }
         
-        
         return list;
-        
     }
 
-    function getAddresses(uint8[] memory/* rolesIndex*/) public override pure returns(address[][] memory){
+    function getAddresses(uint8[] calldata/* rolesIndex*/) public override pure returns(address[][] memory){
         address[][]memory list = new address[][](0);
         return list;
     }
 
-   
+    function getRolesWhichAccountCanGrant(
+        address accountWhichWillGrant,
+        string[] memory roleNames
+    ) external view returns (uint8[] memory) {
+
+    }
+
+    function hasRole(
+        address account,
+        uint8 roleIndex
+    ) external view returns (bool) {
+
+    }
+
+    function grantRoles(
+        address[] memory accounts,
+        uint8[] memory roleIndexes
+    ) external {
+
+    }
+
+    function revokeRoles(
+        address[] memory accounts,
+        uint8[] memory roleIndexes
+    ) external {
+
+    }
     
 }

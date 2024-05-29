@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.11;
+pragma solidity ^0.8.18;
 
 pragma experimental ABIEncoderV2;
 
@@ -15,8 +15,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
-import "@artman325/community/contracts/interfaces/ICommunity.sol";
-import "@artman325/releasemanager/contracts/CostManagerHelper.sol";
+import "@intercoin/community/contracts/interfaces/ICommunity.sol";
+import "@intercoin/releasemanager/contracts/CostManagerHelper.sol";
 import "./interfaces/IControlContract.sol";
 import "./lib/StringUtils.sol";
 /**
@@ -721,7 +721,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     {
         return uint256(keccak256(abi.encodePacked(
             block.timestamp, 
-            block.difficulty, 
+            block.prevrandao,  //block.difficulty,  "difficulty" was replaced by "prevrandao", which now returns a random number based on the beacon chain.
             msg.sender
         )));    
     }

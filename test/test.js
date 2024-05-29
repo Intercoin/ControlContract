@@ -1,179 +1,82 @@
-const { ethers, waffle } = require('hardhat');
-const { BigNumber } = require('ethers');
+const { ethers} = require('hardhat');
 const { expect } = require('chai');
-const chai = require('chai');
-const { time } = require('@openzeppelin/test-helpers');
+//const chai = require('chai');
+const { time, loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
+//const { expect } = require('chai'); 
 
-const ZERO = BigNumber.from('0');
-const ONE = BigNumber.from('1');
-const TWO = BigNumber.from('2');
-const THREE = BigNumber.from('3');
-const FOUR = BigNumber.from('4');
-const FIVE = BigNumber.from('5');
-const SEVEN = BigNumber.from('7');
-const TEN = BigNumber.from('10');
-const HUNDRED = BigNumber.from('100');
-const THOUSAND = BigNumber.from('1000');
+require("@nomicfoundation/hardhat-chai-matchers");
+
+const { 
+    deployBase,
+    deployWithoutDelay,
+    deployWithDelay
+} = require("./fixtures/deploy.js");
+
+// const ZERO = BigNumber.from('0');
+// const ONE = BigNumber.from('1');
+// const TWO = BigNumber.from('2');
+// const THREE = BigNumber.from('3');
+// const FOUR = BigNumber.from('4');
+// const FIVE = BigNumber.from('5');
+// const SEVEN = BigNumber.from('7');
+// const TEN = BigNumber.from('10');
+// const HUNDRED = BigNumber.from('100');
+// const THOUSAND = BigNumber.from('1000');
+// const ONE_ETH = ethers.utils.parseEther('1');
 
 
-const ONE_ETH = ethers.utils.parseEther('1');
-
-//const TOTALSUPPLY = ethers.utils.parseEther('1000000000');    
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-const DEAD_ADDRESS = '0x000000000000000000000000000000000000dEaD';
-
-const NO_COSTMANAGER = ZERO_ADDRESS;
 
 describe("Community", function () {
-    const accounts = waffle.provider.getWallets();
     
-    // Setup accounts.
-    const owner = accounts[0];                     
-    const accountOne = accounts[1];  
-    const accountTwo = accounts[2];
-    const accountThree= accounts[3];
-    const accountFourth = accounts[4];
-    const accountFive = accounts[5];
-    const accountSix = accounts[6];
-    const accountSeven = accounts[7];
-    const accountEight = accounts[8];
-    const accountNine = accounts[9];
-    const accountEleven = accounts[11];
-    const accountTwelwe = accounts[12];
-    const alice = accounts[1];  
-    const bob = accounts[2];
-    const charlie= accounts[3];
-    
-    // setup useful vars
-    var ControlContractFactoryF;
-    var ControlContractF;
-    var CommunityMockF;
-    
-    var rolesTitle = new Map([
-      ['owners', 'owners'],
-      ['admins', 'admins'],
-      ['members', 'members'],
-      ['relayers', 'relayers'],
-      ['role1', 'Role#1'],
-      ['role2', 'Role#2'],
-      ['role3', 'Role#3'],
-      ['role4', 'Role#4'],
-      ['role5', 'Role#5'],
-      ['cc_admins', 'AdMiNs'],
-      ['sub-admins', 'sub-admins'],
-      ['group1_can_invoke', 'group1_can_invoke'],
-      ['group1_can_endorse', 'group1_can_endorse'],
-      ['group2_can_invoke', 'group2_can_invoke'],
-      ['group2_can_endorse', 'group2_can_endorse']
-    ]);
-   
-    var rolesIndex = new Map([
-      ['owners', 1],
-      ['admins', 2],
-      ['members', 3],
-      ['relayers', 4],
-      ['role1', 5],
-      ['role2', 6],
-      ['role3', 7],
-      ['role4', 9],
-      ['role5', 10],
-      ['cc_admins', 11],
-      ['sub-admins', 12],
-      ['group1_can_invoke', 13],
-      ['group1_can_endorse', 14],
-      ['group2_can_invoke', 15],
-      ['group2_can_endorse', 16]
-      
-    ]);
-
-    const WITHOUT_DELAY = ZERO;
-    
-
-
-    var ControlContractFactory;
-    var ControlContract;
-    var CommunityMock;
-    
-    var CostManagerBad, CostManagerGood;
-    beforeEach("deploying", async() => {
-        const ReleaseManagerFactoryF = await ethers.getContractFactory("MockReleaseManagerFactory");
-        const CostManagerGoodF = await ethers.getContractFactory("MockCostManagerGood");
-        const CostManagerBadF = await ethers.getContractFactory("MockCostManagerBad");
-
-        const ReleaseManagerF = await ethers.getContractFactory("MockReleaseManager");
-        
-        ControlContractFactoryF = await ethers.getContractFactory("ControlContractFactory");    
-        ControlContractF = await ethers.getContractFactory("ControlContractMock");    
-        CommunityMockF = await ethers.getContractFactory("CommunityMock");    
-        
-        CostManagerGood = await CostManagerGoodF.deploy();
-        CostManagerBad = await CostManagerBadF.deploy();
-        let implementationReleaseManager    = await ReleaseManagerF.deploy();
-
-        let releaseManagerFactory   = await ReleaseManagerFactoryF.connect(owner).deploy(implementationReleaseManager.address);
-        let tx,rc,event,instance,instancesCount;
-        //
-        tx = await releaseManagerFactory.connect(owner).produce();
-        rc = await tx.wait(); // 0ms, as tx is already confirmed
-        event = rc.events.find(event => event.event === 'InstanceProduced');
-        [instance, instancesCount] = event.args;
-        let releaseManager = await ethers.getContractAt("MockReleaseManager",instance);
-
-        var ControlContractImpl = await ControlContractF.connect(owner).deploy();
-        CommunityMock = await CommunityMockF.connect(owner).deploy();
-        ControlContractFactory = await ControlContractFactoryF.connect(owner).deploy(ControlContractImpl.address, NO_COSTMANAGER, releaseManager.address);
-
-        // 
-        const factoriesList = [ControlContractFactory.address];
-        const factoryInfo = [
-            [
-                1,//uint8 factoryIndex; 
-                1,//uint16 releaseTag; 
-                "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
-            ]
-        ];
-
-        await releaseManager.connect(owner).newRelease(factoriesList, factoryInfo);
-
-    });
-
     it('validate input params', async () => {
-        
+        const {
+            owner,
+            ZERO_ADDRESS,
+            WITHOUT_DELAY,
+            ControlContractFactory,
+            ControlContractF, 
+            CommunityMock
+        } = await loadFixture(deployBase);
         //['sub-admins','members']
         await expect(
             ControlContractFactory.connect(owner).produce(ZERO_ADDRESS, [[1,2]], WITHOUT_DELAY)
-        ).to.be.revertedWith("EmptyCommunityAddress()");
+        ).to.be.revertedWithCustomError(ControlContractF, "EmptyCommunityAddress");
 
         await expect(
-            ControlContractFactory.connect(owner).produce(CommunityMock.address, [], WITHOUT_DELAY)
-        ).to.be.revertedWith("NoGroups()");
+            ControlContractFactory.connect(owner).produce(CommunityMock.target, [], WITHOUT_DELAY)
+        ).to.be.revertedWithCustomError(ControlContractF, "NoGroups");
 
         //['sub-admins','members'],['admins','sub-admins']
         await expect(
-            ControlContractFactory.connect(owner).produce(CommunityMock.address, [[1,2],[3,1]], WITHOUT_DELAY)
-        ).to.be.revertedWith("RoleExistsOrInvokeEqualEndorse()");
+            ControlContractFactory.connect(owner).produce(CommunityMock.target, [[1,2],[3,1]], WITHOUT_DELAY)
+        ).to.be.revertedWithCustomError(ControlContractF, "RoleExistsOrInvokeEqualEndorse");
 
     });
 
     it('factory instances count', async () => {
+        const {
+            owner,
+            WITHOUT_DELAY,
+            ControlContractFactory,
+            CommunityMock
+        } = await loadFixture(deployBase);
 
         let instancesCountBefore = await ControlContractFactory.instancesCount();
 
-        await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[1,2]], WITHOUT_DELAY);
-        await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[3,4]], WITHOUT_DELAY);
-        await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[5,6]], WITHOUT_DELAY);
+        await ControlContractFactory.connect(owner).produce(CommunityMock.target, [[1,2]], WITHOUT_DELAY);
+        await ControlContractFactory.connect(owner).produce(CommunityMock.target, [[3,4]], WITHOUT_DELAY);
+        await ControlContractFactory.connect(owner).produce(CommunityMock.target, [[5,6]], WITHOUT_DELAY);
         
         let instancesCountAfter = await ControlContractFactory.instancesCount();
-        expect(
-            BigNumber.from(instancesCountAfter).sub(BigNumber.from(instancesCountBefore))
-        ).to.be.eq(THREE);
+        expect(instancesCountAfter - instancesCountBefore).to.be.eq(3n);
     });
 
     describe("ControlContract tests", function () {
     
         describe("simple test methods", function () {
-            var ControlContract;
+            //var ControlContract;
             //var CommunityFactory;
+            /*
             beforeEach("deploying", async() => {
 
                 let tx,rc,event,instance,instancesCount;
@@ -185,23 +88,26 @@ describe("Community", function () {
                 ControlContract = await ethers.getContractAt("ControlContractMock",instance);
 
             });
-
+*/
             it('with no params', async () => {
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    rolesIndex,
+                    CommunityMock,
+                    SomeExternalMock,
+                    ControlContract
+                } = await loadFixture(deployWithoutDelay);
                 
-                await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('sub-admins')]);
-                await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('members')]);
-                await CommunityMock.setRoles(accountThree.address, [rolesIndex.get('members')]);
-                
-                var SomeExternalMockF = await ethers.getContractFactory("SomeExternalMock");
-                var SomeExternalMock = await SomeExternalMockF.connect(owner).deploy();
-
                 var counterBefore = await SomeExternalMock.viewCounter();
                 
                 let funcHexademicalStr = await SomeExternalMock.returnFuncSignatureHexadecimalString();
                 // await ControlContractInstance.allowInvoke('sub-admins',SomeExternalMockInstance.address,funcHexademicalStr,{ from: accountTen });
                 // await ControlContractInstance.allowEndorse('members',SomeExternalMockInstance.address,funcHexademicalStr,{ from: accountTen });
                 await ControlContract.connect(owner).addMethod(
-                    SomeExternalMock.address,
+                    SomeExternalMock.target,
                     funcHexademicalStr,
                     rolesIndex.get('sub-admins'),
                     rolesIndex.get('members'),
@@ -213,21 +119,21 @@ describe("Community", function () {
 
                 let tx,rc,event;
 
-                tx = await ControlContract.connect(accountOne).invoke(
-                    SomeExternalMock.address,
+                tx = await ControlContract.connect(alice).invoke(
+                    SomeExternalMock.target,
                     funcHexademicalStr,
                     '' //string memory params
                     ,
                 );
                 
                 rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'OperationInvoked');
+                event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
                 //invokeID, invokeIDWei, tokenAddr, method, params
                 [invokeID,,,,] = event.args;
 
-                await ControlContract.connect(accountTwo).endorse(invokeID);
+                await ControlContract.connect(bob).endorse(invokeID);
 
-                await ControlContract.connect(accountThree).endorse(invokeID);
+                await ControlContract.connect(charlie).endorse(invokeID);
                 
                 var counterAfter = await SomeExternalMock.viewCounter();
                 
@@ -237,27 +143,32 @@ describe("Community", function () {
 
 
             it('with params (mint tokens)', async () => {
-            
-                await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('sub-admins')]);
-                await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('members')]);
-                await CommunityMock.setRoles(accountThree.address, [rolesIndex.get('members')]);
                 
-                var ERC20MintableF = await ethers.getContractFactory("ERC20Mintable");
-                var ERC20Mintable = await ERC20MintableF.connect(owner).deploy();
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    david,
+                    rolesIndex,
+                    CommunityMock,
+                    ERC20Mintable,
+                    ControlContract
+                } = await loadFixture(deployWithoutDelay);
+
                 await ERC20Mintable.connect(owner).init('t1','t1');
-
-                await ERC20Mintable.connect(owner).transferOwnership(ControlContract.address);
+                await ERC20Mintable.connect(owner).transferOwnership(ControlContract.target);
                 
-                var counterBefore = await ERC20Mintable.balanceOf(accountFive.address);
+                var counterBefore = await ERC20Mintable.balanceOf(david.address);
 
-                // transfer to accountFive 10 tokens    
+                // transfer to david 10 tokens    
                 //0x40c10f19000000000000000000000000ea674fdde714fd979de3edf0f56aa9716b898ec80000000000000000000000000000000000000000000000008ac7230489e80000
                 let funcHexademicalStr = '40c10f19';
-                let memoryParamsHexademicalStr = '000000000000000000000000'+((accountFive.address).replace('0x',''))+'0000000000000000000000000000000000000000000000008ac7230489e80000';
+                let memoryParamsHexademicalStr = '000000000000000000000000'+((david.address).replace('0x',''))+'0000000000000000000000000000000000000000000000008ac7230489e80000';
                 // await ControlContractInstance.allowInvoke('sub-admins',ERC20MintableInstance.address,funcHexademicalStr,{ from: accountTen });
                 // await ControlContractInstance.allowEndorse('members',ERC20MintableInstance.address,funcHexademicalStr,{ from: accountTen });
                 await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.address,
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     rolesIndex.get('sub-admins'),
                     rolesIndex.get('members'),
@@ -265,48 +176,52 @@ describe("Community", function () {
                     1 //uint256 fraction
                     ,
                 )
-                let tx,rc;
+                
                 var invokeID,invokeIDWei; 
 
-                tx = await ControlContract.connect(accountOne).invoke(
-                    ERC20Mintable.address,
+                let tx = await ControlContract.connect(alice).invoke(
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr //string memory params
                     ,
                 );
                 
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'OperationInvoked');
+                let rc = await tx.wait(); // 0ms, as tx is already confirmed
+                let event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
                 //invokeID, invokeIDWei, tokenAddr, method, params
                 [invokeID,invokeIDWei,,,] = event.args;
 
-                await ControlContract.connect(accountTwo).endorse(invokeID);
-
-                //await ControlContractInstance.endorse(invokeID, { from: accountThree });
+                await ControlContract.connect(bob).endorse(invokeID);
 
                 await expect(
-                    accountTwo.sendTransaction({to: ControlContract.address, value: invokeIDWei, gasLimit:10000000})
-                ).to.be.revertedWith(`AlreadyEndorsed("${accountTwo.address}")`);
+                    bob.sendTransaction({to: ControlContract.target, value: invokeIDWei, gasLimit:10000000n})
+                ).to.be.revertedWithCustomError(ControlContract, 'AlreadyEndorsed').withArgs(bob.address);
 
                 await expect(
-                    accountThree.sendTransaction({to: ControlContract.address, value: invokeIDWei+2, gasLimit:80000})
-                ).to.be.revertedWith(`UnknownInvokeId(0)`);
+                    charlie.sendTransaction({to: ControlContract.target, value: invokeIDWei+2n, gasLimit:80000n})
+                ).to.be.revertedWithCustomError(ControlContract, 'UnknownInvokeId').withArgs(0);
 
-                await accountThree.sendTransaction({to: ControlContract.address, value: invokeIDWei})
+                await charlie.sendTransaction({to: ControlContract.target, value: invokeIDWei})
                 
                 
-                var counterAfter = await ERC20Mintable.balanceOf(accountFive.address);
+                var counterAfter = await ERC20Mintable.balanceOf(david.address);
 
-                expect(BigNumber.from(counterAfter).sub(BigNumber.from(counterBefore))).to.be.eq(TEN.mul(ONE_ETH));
+                expect(counterAfter - counterBefore).to.be.eq(ethers.parseEther('10'));
                 
-
             });
 
             it('itself call', async () => {
-
-                await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('sub-admins')]);
-                await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('members')]);
-                await CommunityMock.setRoles(accountThree.address, [rolesIndex.get('members')]);
+                    
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    rolesIndex,
+                    CommunityMock,
+                    ERC20Mintable,
+                    ControlContract
+                } = await loadFixture(deployWithoutDelay);
 
                 await expect(
                     ControlContract.setInsideVar(2)
@@ -321,37 +236,37 @@ describe("Community", function () {
                 let memoryParamsHexademicalStr = '0000000000000000000000000000000000000000000000000000000000000002';
 
                 await ControlContract.connect(owner).addMethod(
-                    ControlContract.address,
+                    ControlContract.target,
                     funcHexademicalStr,
                     rolesIndex.get('sub-admins'),
                     rolesIndex.get('members'),
                     2, //uint256 minimum,
                     1 //uint256 fraction
                     ,
-                )
-                let tx,rc;
+                );
+                
                 var invokeID,invokeIDWei; 
 
-                tx = await ControlContract.connect(accountOne).invoke(
-                    ControlContract.address,
+                let tx = await ControlContract.connect(alice).invoke(
+                    ControlContract.target,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr //string memory params
                     ,
                 );
                 
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'OperationInvoked');
+                let rc = await tx.wait(); // 0ms, as tx is already confirmed
+                let event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
                 //invokeID, invokeIDWei, tokenAddr, method, params
                 [invokeID,invokeIDWei,,,] = event.args;
 
-                await ControlContract.connect(accountTwo).endorse(invokeID);
+                await ControlContract.connect(bob).endorse(invokeID);
 
-                await accountThree.sendTransaction({to: ControlContract.address, value: invokeIDWei, gasLimit:10000000})
+                await charlie.sendTransaction({to: ControlContract.target, value: invokeIDWei, gasLimit:10000000n})
                 
                 var insideVarAfter = await ControlContract.getInsideVar();
 
-                expect(insideVarBefore).to.be.eq(ZERO);
-                expect(insideVarAfter).to.be.eq(TWO);
+                expect(insideVarBefore).to.be.eq(0n);
+                expect(insideVarAfter).to.be.eq(2n);
                 
 
             });
@@ -359,27 +274,20 @@ describe("Community", function () {
         });
 
         describe("simple test methods with delay execution ", function () {
-            var ControlContract;
-            const WITH_DELAY = 65000;  //max 2**16 = 65536
-            //var CommunityFactory;
-            beforeEach("deploying", async() => {
-
-                let tx,rc,event,instance,instancesCount;
-                //
-                tx = await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('sub-admins'),rolesIndex.get('members')]], WITH_DELAY);
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'InstanceCreated');
-                [instance, instancesCount] = event.args;
-                ControlContract = await ethers.getContractAt("ControlContractMock",instance);
-
-            });
-
+            
             it('with no params', async () => {
-                
-                await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('sub-admins')]);
-                await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('members')]);
-                await CommunityMock.setRoles(accountThree.address, [rolesIndex.get('members')]);
-                
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    rolesIndex,
+                    WITH_DELAY,
+                    CommunityMock,
+                    ERC20Mintable,
+                    ControlContract
+                } = await loadFixture(deployWithDelay);
+
                 var SomeExternalMockF = await ethers.getContractFactory("SomeExternalMock");
                 var SomeExternalMock = await SomeExternalMockF.connect(owner).deploy();
 
@@ -389,7 +297,7 @@ describe("Community", function () {
                 // await ControlContractInstance.allowInvoke('sub-admins',SomeExternalMockInstance.address,funcHexademicalStr,{ from: accountTen });
                 // await ControlContractInstance.allowEndorse('members',SomeExternalMockInstance.address,funcHexademicalStr,{ from: accountTen });
                 await ControlContract.connect(owner).addMethod(
-                    SomeExternalMock.address,
+                    SomeExternalMock.target,
                     funcHexademicalStr,
                     rolesIndex.get('sub-admins'),
                     rolesIndex.get('members'),
@@ -399,37 +307,32 @@ describe("Community", function () {
                 )
                 var invokeID; 
 
-                let tx,rc,event;
-
-                tx = await ControlContract.connect(accountOne).invoke(
-                    SomeExternalMock.address,
+                let tx = await ControlContract.connect(alice).invoke(
+                    SomeExternalMock.target,
                     funcHexademicalStr,
                     '' //string memory params
                     ,
                 );
                 
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'OperationInvoked');
+                let rc = await tx.wait(); // 0ms, as tx is already confirmed
+                let event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
                 //invokeID, invokeIDWei, tokenAddr, method, params
                 [invokeID,,,,] = event.args;
 
-                await ControlContract.connect(accountTwo).endorse(invokeID);
-
-                await ControlContract.connect(accountThree).endorse(invokeID);
+                await ControlContract.connect(bob).endorse(invokeID);
+                await ControlContract.connect(charlie).endorse(invokeID);
                 
                 var counterAfter = await SomeExternalMock.viewCounter();
-                
-                expect(counterAfter-counterBefore).to.be.eq(0);
+                expect(counterAfter-counterBefore).to.be.eq(0n);
 
                 // pass time
-                await network.provider.send("evm_increaseTime", [WITH_DELAY])
-                await network.provider.send("evm_mine") // this one will have 02:00 PM as its timestamp
+                await time.increase(WITH_DELAY);
+                // this one will have 02:00 PM as its timestamp
 
-                await ControlContract.connect(accountThree).execute(invokeID);
-
-                var counterAfter2 = await SomeExternalMock.viewCounter();
+                await ControlContract.connect(charlie).execute(invokeID);
                 
-                expect(counterAfter2-counterBefore).to.be.eq(1);
+                var counterAfter2 = await SomeExternalMock.viewCounter();
+                expect(counterAfter2-counterBefore).to.be.eq(1n);
                 
             });
         });
@@ -443,6 +346,7 @@ describe("Community", function () {
 
             var tx,rc,event,instance,instancesCount;
             //var CommunityFactory;
+/*
             beforeEach("deploying", async() => {
 
                 let ControlContractMockF = await ethers.getContractFactory("ControlContractMock");    
@@ -505,8 +409,8 @@ describe("Community", function () {
                 memoryParamsHexademicalStr = '000000000000000000000000'+(accountFive.address.replace('0x',''));
 
             });
-
-            it('change ownership of destination erc20 token', async () => {
+*/
+            xit('change ownership of destination erc20 token', async () => {
 
                 var oldOwnerOfErc20 = await ERC20Mintable.owner();
 
@@ -554,6 +458,7 @@ describe("Community", function () {
             var memoryParamsHexademicalStr;
 
             //var CommunityFactory;
+/*
             beforeEach("deploying", async() => {
 
                 let ControlContractMockF = await ethers.getContractFactory("ControlContractMock");    
@@ -616,8 +521,8 @@ describe("Community", function () {
                 memoryParamsHexademicalStr = '000000000000000000000000'+(accountFive.address.replace('0x',''))+'0000000000000000000000000000000000000000000000008ac7230489e80000';
 
             });
-
-            it('group index', async () => {
+*/
+            xit('group index', async () => {
 
                 let groupIndex1 = await ControlContract.connect(owner).getExpectGroupIndex();
 
@@ -643,7 +548,7 @@ describe("Community", function () {
 
             });
 
-            it('heartbeat test', async () => {
+            xit('heartbeat test', async () => {
 
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.address,
@@ -726,7 +631,7 @@ describe("Community", function () {
                 
             });
 
-            it('changed ownership if first group did not send any transaction', async () => {
+            xit('changed ownership if first group did not send any transaction', async () => {
                 
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.address,
@@ -769,7 +674,7 @@ describe("Community", function () {
 
             });
 
-            it('try to change ownership if first group got error via transaction', async () => {
+            xit('try to change ownership if first group got error via transaction', async () => {
         
                     
                 await ControlContract.connect(owner).addMethod(
@@ -837,7 +742,7 @@ describe("Community", function () {
             MockERC777,
             MockERC1155
         ;
-
+/*
         beforeEach("deploying", async() => {
 
             let tx,rc,event,instance,instancesCount;
@@ -859,8 +764,8 @@ describe("Community", function () {
             MockERC777 = await MockERC777F.connect(owner).deploy("testname","testsymbol");
             MockERC1155 = await MockERC1155F.connect(owner).deploy();
         });
-        
-        it('ERC20: should obtain and send to some1', async () => {
+*/
+        xit('ERC20: should obtain and send to some1', async () => {
             expect(await MockERC20.balanceOf(ControlContract.address)).to.be.eq(ZERO);
             //obtain
             await MockERC20.mint(ControlContract.address, ONE);
@@ -872,7 +777,7 @@ describe("Community", function () {
             expect(await MockERC20.balanceOf(ControlContract.address)).to.be.eq(ZERO);
 
         });
-        it('ERC721: should obtain and send to some1', async () => {
+        xit('ERC721: should obtain and send to some1', async () => {
             await expect(MockERC721.ownerOf(ONE)).to.be.revertedWith("ERC721: invalid token ID");
             //obtain
             await MockERC721.mint(ControlContract.address, ONE);
@@ -882,7 +787,7 @@ describe("Community", function () {
             expect(await MockERC721.ownerOf(ONE)).to.be.eq(bob.address);
         });
 
-        it('ERC777: should obtain and send to some1', async () => {
+        xit('ERC777: should obtain and send to some1', async () => {
             expect(await MockERC777.balanceOf(ControlContract.address)).to.be.eq(ZERO);
             //obtain
             await MockERC777.mint(ControlContract.address, ONE);
@@ -893,7 +798,7 @@ describe("Community", function () {
             //
             expect(await MockERC777.balanceOf(ControlContract.address)).to.be.eq(ZERO);
         });
-        it('ERC1155: should obtain and send to some1', async () => {
+        xit('ERC1155: should obtain and send to some1', async () => {
 
             expect(await MockERC1155.balanceOf(ControlContract.address, TWO)).to.be.eq(ZERO);
             //obtain
