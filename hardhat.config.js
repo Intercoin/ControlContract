@@ -44,7 +44,11 @@ module.exports = {
       url: bscURL,
       chainId: 56,
       gasPrice: "auto",
-      accounts: [process.env.private_key],
+      accounts: [
+        process.env.private_key,
+        process.env.private_key_auxiliary,
+        process.env.private_key_releasemanager,
+        ],
       saveDeployments: true
     },
     matic: {
