@@ -9,7 +9,10 @@ require("@nomicfoundation/hardhat-chai-matchers");
 const { 
     deployBase,
     deployWithoutDelay,
-    deployWithDelay
+    deployWithDelay,
+    deploy,
+    deployForTimetests,
+    deployForTokensTransfer
 } = require("./fixtures/deploy.js");
 
 // const ZERO = BigNumber.from('0');
@@ -74,21 +77,7 @@ describe("Community", function () {
     describe("ControlContract tests", function () {
     
         describe("simple test methods", function () {
-            //var ControlContract;
-            //var CommunityFactory;
-            /*
-            beforeEach("deploying", async() => {
-
-                let tx,rc,event,instance,instancesCount;
-                //
-                tx = await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('sub-admins'),rolesIndex.get('members')]], WITHOUT_DELAY);
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'InstanceCreated');
-                [instance, instancesCount] = event.args;
-                ControlContract = await ethers.getContractAt("ControlContractMock",instance);
-
-            });
-*/
+           
             it('with no params', async () => {
                 const {
                     owner,
@@ -96,7 +85,6 @@ describe("Community", function () {
                     bob,
                     charlie,
                     rolesIndex,
-                    CommunityMock,
                     SomeExternalMock,
                     ControlContract
                 } = await loadFixture(deployWithoutDelay);
@@ -141,7 +129,6 @@ describe("Community", function () {
                 
             });
 
-
             it('with params (mint tokens)', async () => {
                 
                 const {
@@ -151,12 +138,10 @@ describe("Community", function () {
                     charlie,
                     david,
                     rolesIndex,
-                    CommunityMock,
                     ERC20Mintable,
                     ControlContract
                 } = await loadFixture(deployWithoutDelay);
 
-                await ERC20Mintable.connect(owner).init('t1','t1');
                 await ERC20Mintable.connect(owner).transferOwnership(ControlContract.target);
                 
                 var counterBefore = await ERC20Mintable.balanceOf(david.address);
@@ -218,8 +203,6 @@ describe("Community", function () {
                     bob,
                     charlie,
                     rolesIndex,
-                    CommunityMock,
-                    ERC20Mintable,
                     ControlContract
                 } = await loadFixture(deployWithoutDelay);
 
@@ -283,8 +266,6 @@ describe("Community", function () {
                     charlie,
                     rolesIndex,
                     WITH_DELAY,
-                    CommunityMock,
-                    ERC20Mintable,
                     ControlContract
                 } = await loadFixture(deployWithDelay);
 
@@ -338,84 +319,34 @@ describe("Community", function () {
         });
 
         describe("example transferownersip", function () {
-            var ControlContract;
-            var groupTimeoutActivity;
-            var ERC20Mintable;
-            var funcHexademicalStr;
-            var memoryParamsHexademicalStr;
 
-            var tx,rc,event,instance,instancesCount;
-            //var CommunityFactory;
-/*
-            beforeEach("deploying", async() => {
+            it('change ownership of destination erc20 token', async () => {
+                const res = await loadFixture(deploy);
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    eve,
+                    rolesIndex,
+                    ERC20Mintable,
+                    CommunityMock,
+                    ControlContract
+                } = res;
 
-                let ControlContractMockF = await ethers.getContractFactory("ControlContractMock");    
-                var ControlContractMockImpl = await ControlContractMockF.connect(owner).deploy();
+                await CommunityMock.setRoles(alice.address, [rolesIndex.get('group1_can_invoke')]);
+                await CommunityMock.setRoles(bob.address, [rolesIndex.get('group1_can_endorse')]);
+                await CommunityMock.setRoles(charlie.address, [rolesIndex.get('group1_can_endorse')]);
                 
-
-                await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('group1_can_invoke')]);
-                await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('group1_can_endorse')]);
-                await CommunityMock.setRoles(accountThree.address, [rolesIndex.get('group1_can_endorse')]);
-
-                const ReleaseManagerFactoryF = await ethers.getContractFactory("MockReleaseManagerFactory");
-                const ReleaseManagerF = await ethers.getContractFactory("MockReleaseManager");
-
-                let implementationReleaseManager    = await ReleaseManagerF.deploy();
-                let releaseManagerFactory   = await ReleaseManagerFactoryF.connect(owner).deploy(implementationReleaseManager.address);
-                let tx,rc,event,instance,instancesCount;
-                //
-                tx = await releaseManagerFactory.connect(owner).produce();
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'InstanceProduced');
-                [instance, instancesCount] = event.args;
-                let releaseManager = await ethers.getContractAt("MockReleaseManager",instance);
-                
-                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER, releaseManager.address);
-                
-                // 
-                const factoriesList = [ControlContractFactoryMock.address];
-                const factoryInfo = [
-                    [
-                        1,//uint8 factoryIndex; 
-                        1,//uint16 releaseTag; 
-                        "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
-                    ]
-                ];
-
-                await releaseManager.connect(owner).newRelease(factoriesList, factoryInfo);
-                //-------------------------------------------------
-
-                //
-                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')]], WITHOUT_DELAY);
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'InstanceCreated');
-                [instance, instancesCount] = event.args;
-                ControlContract = await ethers.getContractAt("ControlContractMock",instance);
-
-                groupTimeoutActivity = await ControlContract.getGroupTimeoutActivity();
-
-                
-                var ERC20MintableF = await ethers.getContractFactory("ERC20Mintable");
-                ERC20Mintable = await ERC20MintableF.connect(owner).deploy();
-                await ERC20Mintable.connect(owner).init('t1','t1');
-                await ERC20Mintable.connect(owner).transferOwnership(ControlContract.address);
-                
-                
-                
-                // change ownership of ERC20MintableInstance to accountFive
+                // change ownership of ERC20MintableInstance to eve
                 // 0xf2fde38b000000000000000000000000ea674fdde714fd979de3edf0f56aa9716b898ec8
-                            
-                funcHexademicalStr = 'f2fde38b';
-                memoryParamsHexademicalStr = '000000000000000000000000'+(accountFive.address.replace('0x',''));
-
-            });
-*/
-            xit('change ownership of destination erc20 token', async () => {
+                const funcHexademicalStr = 'f2fde38b';
+                const memoryParamsHexademicalStr = '000000000000000000000000'+(eve.address.replace('0x',''));
 
                 var oldOwnerOfErc20 = await ERC20Mintable.owner();
 
                 await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.address,
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     rolesIndex.get('group1_can_invoke'),
                     rolesIndex.get('group1_can_endorse'),
@@ -424,8 +355,8 @@ describe("Community", function () {
                     ,
                 )
                 
-                tx = await ControlContract.connect(accountOne).invoke(
-                    ERC20Mintable.address,
+                let tx = await ControlContract.connect(alice).invoke(
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr //string memory params
                     ,
@@ -433,125 +364,66 @@ describe("Community", function () {
                 
                 var invokeID; 
 
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'OperationInvoked');
+                let rc = await tx.wait(); // 0ms, as tx is already confirmed
+                let event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
                 //invokeID, invokeIDWei, tokenAddr, method, params
                 [invokeID,,,,] = event.args;
 
-                await ControlContract.connect(accountTwo).endorse(invokeID);
-                await ControlContract.connect(accountThree).endorse(invokeID);
+                await ControlContract.connect(bob).endorse(invokeID);
+                await ControlContract.connect(charlie).endorse(invokeID);
                 
                 var newOwnerOfErc20 = await ERC20Mintable.owner();
                 
-                expect(oldOwnerOfErc20).not.to.be.eq(accountFive.address);
-                expect(newOwnerOfErc20).to.be.eq(accountFive.address);
-                //assert.equal(accountFive, newOwnerOfErc20,'can\'t change ownership');
+                expect(oldOwnerOfErc20).not.to.be.eq(eve.address);
+                expect(newOwnerOfErc20).to.be.eq(eve.address);
 
             });
         }); 
 
         describe("time tests", function () {
-            var ControlContract;
-            var groupTimeoutActivity;
-            var ERC20Mintable;
-            var funcHexademicalStr;
-            var memoryParamsHexademicalStr;
 
-            //var CommunityFactory;
-/*
-            beforeEach("deploying", async() => {
+            it('group index', async () => {
+                const res = await loadFixture(deployForTimetests);
+                const {
+                    owner,
+                    groupTimeoutActivity,
+                    ControlContract
+                } = res;
 
-                let ControlContractMockF = await ethers.getContractFactory("ControlContractMock");    
-                var ControlContractMockImpl = await ControlContractMockF.connect(owner).deploy();
+                const groupIndex1 = await ControlContract.connect(owner).getExpectGroupIndex();
 
-                await CommunityMock.setRoles(accountOne.address, [rolesIndex.get('group1_can_invoke')]);
-                await CommunityMock.setRoles(accountTwo.address, [rolesIndex.get('group1_can_endorse')]);
-                await CommunityMock.setRoles(accountThree.address, [rolesIndex.get('group2_can_invoke')]);
-                await CommunityMock.setRoles(accountFourth.address, [rolesIndex.get('group2_can_endorse')]);
-                
-                let tx,rc,event,instance,instancesCount;
-                const ReleaseManagerFactoryF = await ethers.getContractFactory("MockReleaseManagerFactory");
-                const ReleaseManagerF = await ethers.getContractFactory("MockReleaseManager");
+                await time.increase(groupTimeoutActivity+10n);
+                const groupIndex2 = await ControlContract.connect(owner).getExpectGroupIndex();
 
-                let implementationReleaseManager    = await ReleaseManagerF.deploy();
-                let releaseManagerFactory   = await ReleaseManagerFactoryF.connect(owner).deploy(implementationReleaseManager.address);
-                
-                //
-                tx = await releaseManagerFactory.connect(owner).produce();
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'InstanceProduced');
-                [instance, instancesCount] = event.args;
-                let releaseManager = await ethers.getContractAt("MockReleaseManager",instance);
-                
-                let ControlContractFactoryMock = await ControlContractFactoryF.connect(owner).deploy(ControlContractMockImpl.address, NO_COSTMANAGER, releaseManager.address);
+                await time.increase(groupTimeoutActivity+10n);
+                const groupIndex3 = await ControlContract.connect(owner).getExpectGroupIndex();
 
-                // 
-                const factoriesList = [ControlContractFactoryMock.address];
-                const factoryInfo = [
-                    [
-                        1,//uint8 factoryIndex; 
-                        1,//uint16 releaseTag; 
-                        "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
-                    ]
-                ];
-
-                await releaseManager.connect(owner).newRelease(factoriesList, factoryInfo);
-                //-------------------------------------------------
-                
-                //
-                tx = await ControlContractFactoryMock.connect(owner).produce(CommunityMock.address, [[rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')], [rolesIndex.get('group2_can_invoke'),rolesIndex.get('group2_can_endorse')]], WITHOUT_DELAY);
-                rc = await tx.wait(); // 0ms, as tx is already confirmed
-                event = rc.events.find(event => event.event === 'InstanceCreated');
-                [instance, instancesCount] = event.args;
-                ControlContract = await ethers.getContractAt("ControlContractMock",instance);
-
-                groupTimeoutActivity = await ControlContract.getGroupTimeoutActivity();
-
-                
-                var ERC20MintableF = await ethers.getContractFactory("ERC20Mintable");
-                ERC20Mintable = await ERC20MintableF.connect(owner).deploy();
-                await ERC20Mintable.connect(owner).init('t1','t1');
-                await ERC20Mintable.connect(owner).transferOwnership(ControlContract.address);
-                
-                
-                
-                // transfer to accountFive 10 tokens    
-                //0x40c10f19000000000000000000000000ea674fdde714fd979de3edf0f56aa9716b898ec80000000000000000000000000000000000000000000000008ac7230489e80000
-                funcHexademicalStr = '40c10f19';
-                memoryParamsHexademicalStr = '000000000000000000000000'+(accountFive.address.replace('0x',''))+'0000000000000000000000000000000000000000000000008ac7230489e80000';
-
-            });
-*/
-            xit('group index', async () => {
-
-                let groupIndex1 = await ControlContract.connect(owner).getExpectGroupIndex();
-
-                await network.provider.send("evm_increaseTime", [parseInt(groupTimeoutActivity)+10]);
-                await network.provider.send("evm_mine");
-
-                let groupIndex2 = await ControlContract.connect(owner).getExpectGroupIndex();
-                
-                await network.provider.send("evm_increaseTime", [parseInt(groupTimeoutActivity)+10]);
-                await network.provider.send("evm_mine");
-
-                let groupIndex3 = await ControlContract.connect(owner).getExpectGroupIndex();
-
-                await network.provider.send("evm_increaseTime", [parseInt(groupTimeoutActivity)+10]);
-                await network.provider.send("evm_mine");
-
-                let groupIndex4 = await ControlContract.connect(owner).getExpectGroupIndex();
+                await time.increase(groupTimeoutActivity+10n);
+                const groupIndex4 = await ControlContract.connect(owner).getExpectGroupIndex();
 
                 expect(groupIndex1).not.to.be.eq(groupIndex2);
-                expect(groupIndex1+1).to.be.eq(groupIndex2);
+                expect(groupIndex1+1n).to.be.eq(groupIndex2);
                 expect(groupIndex2).to.be.eq(groupIndex3);
                 expect(groupIndex2).to.be.eq(groupIndex4);
 
             });
 
-            xit('heartbeat test', async () => {
+            it('heartbeat test', async () => {
+                const res = await loadFixture(deployForTimetests);
+                const {
+                    owner,
+                    alice,
+                    charlie,
+                    rolesIndex,
+                    groupTimeoutActivity,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr,
+                    ERC20Mintable,
+                    ControlContract
+                } = res;
 
                 await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.address,
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     rolesIndex.get('group1_can_invoke'),
                     rolesIndex.get('group1_can_endorse'),
@@ -560,22 +432,22 @@ describe("Community", function () {
                     ,
                 )
                 
-                let rndMinium = 221;
-                let rndFraction = 331;
+                const rndMinimum = 221n;
+                const rndFraction = 331n;
                 await expect(
                     ControlContract.connect(owner).addMethod(
-                        ERC20Mintable.address,
+                        ERC20Mintable.target,
                         funcHexademicalStr,
                         rolesIndex.get('group2_can_invoke'),
                         rolesIndex.get('group2_can_endorse'),
-                        rndMinium, //uint256 minimum,
+                        rndMinimum, //uint256 minimum,
                         rndFraction //uint256 fraction
                         ,
                     )
-                ).to.be.revertedWith(`MethodAlreadyRegistered("${funcHexademicalStr}", ${rndMinium}, ${rndFraction})`);
+                ).to.be.revertedWithCustomError(ControlContract, 'MethodAlreadyRegistered').withArgs(funcHexademicalStr, rndMinimum, rndFraction);
                 
                 await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.address,
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     rolesIndex.get('group2_can_invoke'),
                     rolesIndex.get('group2_can_endorse'),
@@ -585,56 +457,69 @@ describe("Community", function () {
                 );
                 
                 var invokeID,invokeIDWei,currentGroupIndex; 
-                await ControlContract.connect(accountOne).heartbeat();
+                await ControlContract.connect(alice).heartbeat();
                 
                 currentGroupIndex = await ControlContract.getCurrentGroupIndex();
                 // now active is group1
                 // group 2 can not endorse or invoke
                 await expect(
-                    ControlContract.connect(accountThree).invoke(
-                        ERC20Mintable.address,
+                    ControlContract.connect(charlie).invoke(
+                        ERC20Mintable.target,
                         funcHexademicalStr,
                         memoryParamsHexademicalStr //string memory params
                         ,
                     )
-                ).to.be.revertedWith(`SenderIsNotInCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
+                ).to.be.revertedWithCustomError(ControlContract, 'SenderIsNotInCurrentOwnerGroup').withArgs(charlie.address, currentGroupIndex);
                                       
 
                 // pass groupTimeoutActivity = 30 days + extra seconds
                 // NOTE: next transaction after advanceTimeAndBlock can be in block with +1or+0 seconds blocktimestamp. so in invoke we get the exact groupTimeoutActivity pass. in the end of period group is still have ownership.
-                await network.provider.send("evm_increaseTime", [parseInt(groupTimeoutActivity)+10]);
-                await network.provider.send("evm_mine");
+                await time.increase(groupTimeoutActivity+10n)
+                // await network.provider.send("evm_increaseTime", [parseInt(groupTimeoutActivity)+10]);
+                // await network.provider.send("evm_mine");
 
                 // and again
-                await ControlContract.connect(accountThree).invoke(
-                    ERC20Mintable.address,
+                await ControlContract.connect(charlie).invoke(
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr //string memory params
                     ,
                 );
 
-                //return ownership by accountOne for group1
-                await ControlContract.connect(accountOne).heartbeat();
+                //return ownership by alice for group1
+                await ControlContract.connect(alice).heartbeat();
 
                 currentGroupIndex = await ControlContract.getCurrentGroupIndex();
                 // now active is group1
                 // group 2 can not endorse or invoke
                 await expect(
-                    ControlContract.connect(accountThree).invoke(
-                        ERC20Mintable.address,
+                    ControlContract.connect(charlie).invoke(
+                        ERC20Mintable.target,
                         funcHexademicalStr,
                         memoryParamsHexademicalStr //string memory params
                         ,
                     )
-                ).to.be.revertedWith(`SenderIsNotInCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
+                ).to.be.revertedWithCustomError(ControlContract, 'SenderIsNotInCurrentOwnerGroup').withArgs(charlie.address, currentGroupIndex);
 
                 
             });
 
-            xit('changed ownership if first group did not send any transaction', async () => {
-                
+            it('changed ownership if first group did not send any transaction', async () => {
+
+                const res = await loadFixture(deployForTimetests);
+                const {
+                    owner,
+                    charlie,
+                    rolesIndex,
+                    groupTimeoutActivity,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr,
+                    ERC20Mintable,
+                    ControlContract
+                } = res;
+
                 await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.address,
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     rolesIndex.get('group1_can_invoke'),
                     rolesIndex.get('group1_can_endorse'),
@@ -643,7 +528,7 @@ describe("Community", function () {
                     ,
                 )
                 await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.address,
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     rolesIndex.get('group2_can_invoke'),
                     rolesIndex.get('group2_can_endorse'),
@@ -654,19 +539,18 @@ describe("Community", function () {
 
                 let currentGroupIndex = await ControlContract.getCurrentGroupIndex();
                 await expect(
-                    ControlContract.connect(accountThree).invoke(
-                        ERC20Mintable.address,
+                    ControlContract.connect(charlie).invoke(
+                        ERC20Mintable.target,
                         funcHexademicalStr,
                         memoryParamsHexademicalStr //string memory params
                         ,
                     )
-                ).to.be.revertedWith(`SenderIsNotInCurrentOwnerGroup("${accountThree.address}", ${currentGroupIndex})`);
+                ).to.be.revertedWithCustomError(ControlContract, 'SenderIsNotInCurrentOwnerGroup').withArgs(charlie.address, currentGroupIndex);
 
-                await network.provider.send("evm_increaseTime", [parseInt(groupTimeoutActivity)+10]);
-                await network.provider.send("evm_mine");
+                await time.increase(groupTimeoutActivity+10n);
                 
-                await ControlContract.connect(accountThree).invoke(
-                    ERC20Mintable.address,
+                await ControlContract.connect(charlie).invoke(
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr //string memory params
                     ,
@@ -674,11 +558,24 @@ describe("Community", function () {
 
             });
 
-            xit('try to change ownership if first group got error via transaction', async () => {
-        
+            it('try to change ownership if first group got error via transaction', async () => {
+                
+                const res = await loadFixture(deployForTimetests);
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    rolesIndex,
+                    groupTimeoutActivity,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr,
+                    ERC20Mintable,
+                    ControlContract
+                } = res;
                     
                 await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.address,
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     rolesIndex.get('group1_can_invoke'),
                     rolesIndex.get('group1_can_endorse'),
@@ -687,7 +584,7 @@ describe("Community", function () {
                     ,
                 )
                 await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.address,
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     rolesIndex.get('group2_can_invoke'),
                     rolesIndex.get('group2_can_endorse'),
@@ -696,11 +593,10 @@ describe("Community", function () {
                     ,
                 )
 
-                await network.provider.send("evm_increaseTime", [parseInt(groupTimeoutActivity)+10]);
-                await network.provider.send("evm_mine");
+                await time.increase(groupTimeoutActivity+10n);
                 
-                await ControlContract.connect(accountThree).invoke(
-                    ERC20Mintable.address,
+                await ControlContract.connect(charlie).invoke(
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr //string memory params
                     ,
@@ -708,16 +604,16 @@ describe("Community", function () {
                 
                 let invokeIDWeiWrong = 123123;
                 await expect(
-                    accountOne.sendTransaction({to: ControlContract.address, value: invokeIDWeiWrong})
-                ).to.be.revertedWith(`UnknownInvokeId(0)`);
+                    alice.sendTransaction({to: ControlContract.target, value: invokeIDWeiWrong})
+                ).to.be.revertedWithCustomError(ControlContract, 'UnknownInvokeId').withArgs(0);
 
                 await expect(
-                    ControlContract.connect(accountTwo).endorse(invokeIDWeiWrong)
-                ).to.be.revertedWith(`UnknownInvokeId(${invokeIDWeiWrong})`);
+                    ControlContract.connect(bob).endorse(invokeIDWeiWrong)
+                ).to.be.revertedWithCustomError(ControlContract, 'UnknownInvokeId').withArgs(invokeIDWeiWrong);
 
                 // group2 membbers still owner of contract and still can invoke
-                await ControlContract.connect(accountThree).invoke(
-                    ERC20Mintable.address,
+                await ControlContract.connect(charlie).invoke(
+                    ERC20Mintable.target,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr //string memory params
                     ,
@@ -730,85 +626,76 @@ describe("Community", function () {
     });
 
     describe("Tokens Transfers", function () {
-        var ControlContract;
         
+        it('ERC20: should obtain and send to some1', async () => {
+            const {
+                bob,
+                MockERC20,
+                ControlContract
+            } = await loadFixture(deployForTokensTransfer);
 
-        var MockERC20F,
-            MockERC721F,
-            MockERC777F,
-            MockERC1155F,
-            MockERC20,
-            MockERC721,
-            MockERC777,
-            MockERC1155
-        ;
-/*
-        beforeEach("deploying", async() => {
-
-            let tx,rc,event,instance,instancesCount;
-            //
-            tx = await ControlContractFactory.connect(owner).produce(CommunityMock.address, [[1,2]], WITHOUT_DELAY);
-
-            rc = await tx.wait(); // 0ms, as tx is already confirmed
-            event = rc.events.find(event => event.event === 'InstanceCreated');
-            [instance, instancesCount] = event.args;
-            ControlContract = await ethers.getContractAt("ControlContractMock",instance);
-
-            MockERC20F = await ethers.getContractFactory("MockERC20");
-            MockERC721F = await ethers.getContractFactory("MockERC721");
-            MockERC777F = await ethers.getContractFactory("MockERC777");
-            MockERC1155F = await ethers.getContractFactory("MockERC1155");
-
-            MockERC20 = await MockERC20F.connect(owner).deploy("testname","testsymbol");
-            MockERC721 = await MockERC721F.connect(owner).deploy("testname","testsymbol");
-            MockERC777 = await MockERC777F.connect(owner).deploy("testname","testsymbol");
-            MockERC1155 = await MockERC1155F.connect(owner).deploy();
-        });
-*/
-        xit('ERC20: should obtain and send to some1', async () => {
-            expect(await MockERC20.balanceOf(ControlContract.address)).to.be.eq(ZERO);
+            expect(await MockERC20.balanceOf(ControlContract.target)).to.be.eq(0n);
             //obtain
-            await MockERC20.mint(ControlContract.address, ONE);
-            expect(await MockERC20.balanceOf(ControlContract.address)).to.be.eq(ONE);
+            await MockERC20.mint(ControlContract.target, 1n);
+            expect(await MockERC20.balanceOf(ControlContract.target)).to.be.eq(1n);
             //send
-            await ControlContract.transferERC20(MockERC20.address, bob.address, ONE);
-            expect(await MockERC20.balanceOf(bob.address)).to.be.eq(ONE);
+            await ControlContract.transferERC20(MockERC20.target, bob.address, 1n);
+            expect(await MockERC20.balanceOf(bob.address)).to.be.eq(1n);
             //
-            expect(await MockERC20.balanceOf(ControlContract.address)).to.be.eq(ZERO);
+            expect(await MockERC20.balanceOf(ControlContract.target)).to.be.eq(0n);
 
         });
-        xit('ERC721: should obtain and send to some1', async () => {
-            await expect(MockERC721.ownerOf(ONE)).to.be.revertedWith("ERC721: invalid token ID");
+
+        it('ERC721: should obtain and send to some1', async () => {
+            const {
+                bob,
+                MockERC721,
+                ControlContract
+            } = await loadFixture(deployForTokensTransfer);
+
+            await expect(MockERC721.ownerOf(1n)).to.be.revertedWith("ERC721: invalid token ID");
             //obtain
-            await MockERC721.mint(ControlContract.address, ONE);
-            expect(await MockERC721.ownerOf(ONE)).to.be.eq(ControlContract.address);
+            await MockERC721.mint(ControlContract.target, 1n);
+            expect(await MockERC721.ownerOf(1n)).to.be.eq(ControlContract.target);
             //send
-            await ControlContract.transferERC721(MockERC721.address, bob.address, ONE);
-            expect(await MockERC721.ownerOf(ONE)).to.be.eq(bob.address);
+            await ControlContract.transferERC721(MockERC721.target, bob.address, 1n);
+            expect(await MockERC721.ownerOf(1n)).to.be.eq(bob.address);
         });
 
-        xit('ERC777: should obtain and send to some1', async () => {
-            expect(await MockERC777.balanceOf(ControlContract.address)).to.be.eq(ZERO);
-            //obtain
-            await MockERC777.mint(ControlContract.address, ONE);
-            expect(await MockERC777.balanceOf(ControlContract.address)).to.be.eq(ONE);
-            //send
-            await ControlContract.transferERC777(MockERC777.address, bob.address, ONE);
-            expect(await MockERC777.balanceOf(bob.address)).to.be.eq(ONE);
-            //
-            expect(await MockERC777.balanceOf(ControlContract.address)).to.be.eq(ZERO);
-        });
-        xit('ERC1155: should obtain and send to some1', async () => {
+        it('ERC777: should obtain and send to some1', async () => {
+            const {
+                bob,
+                MockERC777,
+                ControlContract
+            } = await loadFixture(deployForTokensTransfer);
 
-            expect(await MockERC1155.balanceOf(ControlContract.address, TWO)).to.be.eq(ZERO);
+            expect(await MockERC777.balanceOf(ControlContract.target)).to.be.eq(0n);
             //obtain
-            await MockERC1155.mint(ControlContract.address, TWO, ONE);
-            expect(await MockERC1155.balanceOf(ControlContract.address, TWO)).to.be.eq(ONE);
+            await MockERC777.mint(ControlContract.target, 1n);
+            expect(await MockERC777.balanceOf(ControlContract.target)).to.be.eq(1n);
             //send
-            await ControlContract.transferERC1155(MockERC1155.address, bob.address, TWO, ONE);
-            expect(await MockERC1155.balanceOf(bob.address, TWO)).to.be.eq(ONE);
+            await ControlContract.transferERC777(MockERC777.target, bob.address, 1n);
+            expect(await MockERC777.balanceOf(bob.address)).to.be.eq(1n);
             //
-            expect(await MockERC1155.balanceOf(ControlContract.address, TWO)).to.be.eq(ZERO);
+            expect(await MockERC777.balanceOf(ControlContract.target)).to.be.eq(0n);
+        });
+
+        it('ERC1155: should obtain and send to some1', async () => {
+            const {
+                bob,
+                MockERC1155,
+                ControlContract
+            } = await loadFixture(deployForTokensTransfer);
+
+            expect(await MockERC1155.balanceOf(ControlContract.target, 2n)).to.be.eq(0n);
+            //obtain
+            await MockERC1155.mint(ControlContract.target, 2n, 1n);
+            expect(await MockERC1155.balanceOf(ControlContract.target, 2n)).to.be.eq(1n);
+            //send
+            await ControlContract.transferERC1155(MockERC1155.target, bob.address, 2n, 1n);
+            expect(await MockERC1155.balanceOf(bob.address, 2n)).to.be.eq(1n);
+            //
+            expect(await MockERC1155.balanceOf(ControlContract.target, 2n)).to.be.eq(0n);
 
         });
         

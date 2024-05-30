@@ -67,6 +67,7 @@ async function deployBase() {
 
     const ERC20MintableF = await ethers.getContractFactory("ERC20Mintable");
     const ERC20Mintable = await ERC20MintableF.connect(owner).deploy();
+    await ERC20Mintable.connect(owner).init("TestToken", "TST");
 
     let implementationReleaseManager    = await ReleaseManagerF.deploy();
     let releaseManagerFactory   = await ReleaseManagerFactoryF.connect(owner).deploy(implementationReleaseManager.target);
@@ -156,6 +157,7 @@ async function deployWithoutDelay() {
         ControlContract
     }}
 }
+
 async function deployWithDelay() {
     const res = await loadFixture(deployBase);
     const {
@@ -186,8 +188,124 @@ async function deployWithDelay() {
     }}
 }
 
+async function deploy() {
+    const res = await loadFixture(deployBase);
+    const {
+        owner,
+        rolesIndex,
+        WITHOUT_DELAY,
+        ControlContractFactory,
+        ERC20Mintable,
+        CommunityMock
+    } = res;
+
+
+    let instance;
+                //
+    let tx = await ControlContractFactory.connect(owner).produce(CommunityMock.
+        target, 
+        [
+            [rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')],
+            [rolesIndex.get('group2_can_invoke'),rolesIndex.get('group2_can_endorse')],
+        ], 
+        WITHOUT_DELAY
+    );
+    let rc = await tx.wait(); // 0ms, as tx is already confirmed
+    
+    let event = rc.logs.find(event => event.fragment.name === 'InstanceCreated');
+    
+    [instance, ] = event.args;
+    const ControlContract = await ethers.getContractAt("ControlContractMock",instance);
+
+    const groupTimeoutActivity = await ControlContract.getGroupTimeoutActivity();
+            
+    await ERC20Mintable.connect(owner).transferOwnership(ControlContract.target);
+
+    return {...res, ...{
+        ControlContract,
+        groupTimeoutActivity
+    }}
+}
+
+async function deployForTimetests() {
+    const res = await loadFixture(deploy);
+    const {
+        owner,
+        alice,
+        bob,
+        charlie,
+        david,
+        eve,
+        rolesIndex,
+        CommunityMock,
+        ControlContract
+    } = res;
+
+    await CommunityMock.setRoles(alice.address, [rolesIndex.get('group1_can_invoke')]);
+    await CommunityMock.setRoles(bob.address, [rolesIndex.get('group1_can_endorse')]);
+    await CommunityMock.setRoles(charlie.address, [rolesIndex.get('group2_can_invoke')]);
+    await CommunityMock.setRoles(david.address, [rolesIndex.get('group2_can_endorse')]);
+
+    // transfer to accountFive 10 tokens    
+    //0x40c10f19000000000000000000000000ea674fdde714fd979de3edf0f56aa9716b898ec80000000000000000000000000000000000000000000000008ac7230489e80000
+    const funcHexademicalStr = '40c10f19';
+    const memoryParamsHexademicalStr = '000000000000000000000000'+(eve.address.replace('0x',''))+'0000000000000000000000000000000000000000000000008ac7230489e80000';
+
+
+    return {...res, ...{
+        funcHexademicalStr,
+        memoryParamsHexademicalStr,
+        ControlContract
+    }}
+}
+
+async function deployForTokensTransfer() {
+    const res = await loadFixture(deployBase);
+    const {
+        owner,
+        rolesIndex,
+        WITHOUT_DELAY,
+        ControlContractFactory,
+        CommunityMock
+    } = res;
+
+    let instance;
+                //
+    let tx = await ControlContractFactory.connect(owner).produce(CommunityMock.target, [[rolesIndex.get('sub-admins'),rolesIndex.get('members')]], WITHOUT_DELAY);
+    let rc = await tx.wait(); // 0ms, as tx is already confirmed
+    let event = rc.logs.find(event => event.fragment.name === 'InstanceCreated');
+    [instance, ] = event.args;
+    const ControlContract = await ethers.getContractAt("ControlContractMock",instance);
+
+    const MockERC20F = await ethers.getContractFactory("MockERC20");
+    const MockERC721F = await ethers.getContractFactory("MockERC721");
+    const MockERC777F = await ethers.getContractFactory("MockERC777");
+    const MockERC1155F = await ethers.getContractFactory("MockERC1155");
+
+    const MockERC20 = await MockERC20F.connect(owner).deploy("testname","testsymbol");
+    const MockERC721 = await MockERC721F.connect(owner).deploy("testname","testsymbol");
+    const MockERC777 = await MockERC777F.connect(owner).deploy("testname","testsymbol");
+    const MockERC1155 = await MockERC1155F.connect(owner).deploy();
+
+    return {...res, ...{
+        ControlContract,
+        MockERC20F,
+        MockERC721F,
+        MockERC777F,
+        MockERC1155F,
+
+        MockERC20,
+        MockERC721,
+        MockERC777,
+        MockERC1155
+    }}
+}
+
 module.exports = {
   deployBase,
   deployWithoutDelay,
-  deployWithDelay
+  deployWithDelay,
+  deploy,
+  deployForTimetests,
+  deployForTokensTransfer
 }
