@@ -1,18 +1,6 @@
-require('dotenv').config()
-
-require("@nomiclabs/hardhat-ethers")
-require('hardhat-docgen')
-require('hardhat-deploy')
-require("@nomiclabs/hardhat-waffle")
-require("@nomiclabs/hardhat-web3")
-require("@nomiclabs/hardhat-etherscan")
-require("solidity-coverage")
-require("hardhat-gas-reporter")
-//require("hardhat-docgen")
-require("@hardhat-docgen/core")
-//require("@hardhat-docgen/markdown")
-require("./docgen-custom-markdown")
-
+require('dotenv').config();
+require("@nomicfoundation/hardhat-toolbox");
+require("hardhat-contract-sizer");
 
 const kovanURL = `https://eth-kovan.alchemyapi.io/v2/${process.env.ALCHEMY_KOVAN}`
 const goerliURL = `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_GOERLI}`
@@ -56,7 +44,11 @@ module.exports = {
       url: bscURL,
       chainId: 56,
       gasPrice: "auto",
-      accounts: [process.env.private_key],
+      accounts: [
+        process.env.private_key,
+        process.env.private_key_auxiliary,
+        process.env.private_key_releasemanager,
+        ],
       saveDeployments: true
     },
     matic: {
@@ -81,16 +73,6 @@ module.exports = {
       saveDeployments: true
     }
   },
-  docgen: {
-    theme: '../../docgen-custom-markdown',
-    path: './docs',
-    clear: true,
-    runOnCompile: false,
-  },
-  gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
-    currency: "USD"
-  },
   etherscan: {
     apiKey: process.env.MATIC_API_KEY
     //apiKey: process.env.ETHERSCAN_API_KEY
@@ -99,7 +81,7 @@ module.exports = {
   solidity: {
     compilers: [
         {
-          version: "0.8.11",
+          version: "0.8.18",
           settings: {
             optimizer: {
               enabled: true,
@@ -130,22 +112,11 @@ module.exports = {
           },
         },
       ],
-  
-    
   },
-  
   namedAccounts: {
     deployer: 0,
-    },
-
+  },
   paths: {
     sources: "contracts",
-  },
-  gasReporter: {
-    currency: 'USD',
-    enabled: (process.env.REPORT_GAS === "true") ? true : false
-  },
-  mocha: {
-    timeout: 200000
   }
 }

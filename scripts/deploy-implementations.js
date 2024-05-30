@@ -44,7 +44,19 @@ async function main() {
     }
 	//----------------
 
-	const [deployer] = await ethers.getSigners();
+    var signers = await ethers.getSigners();
+    const provider = ethers.provider;
+    var deployer;
+    if (signers.length == 1) {
+        deployer = signers[0];
+    } else {
+        [
+            /*depl_local*/,
+            deployer,
+            /*depl_releasemanager*/,
+        ] = signers;
+    }
+
 	
 	const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
     const RELEASE_MANAGER = hre.network.name == 'mumbai'? process.env.RELEASE_MANAGER_MUMBAI : process.env.RELEASE_MANAGER;
@@ -59,7 +71,7 @@ async function main() {
 	// 	gasLimit: 10e6
 	// };
 
-    const deployerBalanceBefore = await deployer.getBalance();
+    const deployerBalanceBefore = await provider.getBalance(deployer.address);
     console.log("Account balance:", (deployerBalanceBefore).toString());
 
 	const ControlContractF = await ethers.getContractFactory("ControlContract");
@@ -67,14 +79,14 @@ async function main() {
 	let implementationControlContract = await ControlContractF.connect(deployer).deploy();
     
 	console.log("Implementations:");
-	console.log("  ControlContract deployed at:       ", implementationControlContract.address);
+	console.log("  ControlContract deployed at:       ", implementationControlContract.target);
 
-	data_object.implementationControlContract 	= implementationControlContract.address;
+	data_object.implementationControlContract 	= implementationControlContract.target;
     data_object.releaseManager                  = RELEASE_MANAGER;
 
-	const deployerBalanceAfter = await deployer.getBalance();
-	console.log("Spent:", ethers.utils.formatEther(deployerBalanceBefore.sub(deployerBalanceAfter)));
-	console.log("gasPrice:", ethers.utils.formatUnits((await network.provider.send("eth_gasPrice")), "gwei")," gwei");
+	const deployerBalanceAfter = await provider.getBalance(deployer.address);
+	console.log("Spent:", ethers.formatEther(deployerBalanceBefore - deployerBalanceAfter));
+	console.log("gasPrice:", ethers.formatUnits((await network.provider.send("eth_gasPrice")), "gwei")," gwei");
 
 	//---
 	const ts_updated = Date.now();

@@ -40,7 +40,18 @@ async function main() {
 		throw("Arguments file: wrong addresses");
 	}
 
-	const [deployer] = await ethers.getSigners();
+	var signers = await ethers.getSigners();
+    const provider = ethers.provider;
+    var deployer;
+    if (signers.length == 1) {
+        deployer = signers[0];
+    } else {
+        [
+            /*depl_local*/,
+            deployer,
+            /*depl_releasemanager*/,
+        ] = signers;
+    }
 	
 	const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 	console.log(
@@ -62,19 +73,19 @@ async function main() {
 		options
 	]
 
-    const deployerBalanceBefore = await deployer.getBalance();
+    const deployerBalanceBefore = await provider.getBalance(deployer.address);
     console.log("Account balance:", (deployerBalanceBefore).toString());
 
 	const ControlContractFactoryF = await ethers.getContractFactory("ControlContractFactory");
 
 	this.factory = await ControlContractFactoryF.connect(deployer).deploy(...params);
 
-	console.log("Factory deployed at:", this.factory.address);
+	console.log("Factory deployed at:", this.factory.target);
 	console.log("with params:", [..._params]);
 
 	console.log("registered with release manager:", data_object.releaseManager);
 	
-	const deployerBalanceAfter = await deployer.getBalance();
+	const deployerBalanceAfter = await provider.getBalance(deployer.address);
 	console.log("Spent:", ethers.utils.formatEther(deployerBalanceBefore.sub(deployerBalanceAfter)));
 	console.log("gasPrice:", ethers.utils.formatUnits((await network.provider.send("eth_gasPrice")), "gwei")," gwei");
 }

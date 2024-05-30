@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.11;
+pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@artman325/releasemanager/contracts/CostManagerFactoryHelper.sol";
-import "@artman325/releasemanager/contracts/ReleaseManagerHelper.sol";
+import "@intercoin/releasemanager/contracts/CostManagerFactoryHelper.sol";
+import "@intercoin/releasemanager/contracts/ReleaseManagerHelper.sol";
 import "./interfaces/IControlContract.sol";
 /**
 ****************
