@@ -117,27 +117,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     //----------------------------------------------------
     // modifiers section 
     //----------------------------------------------------
-    modifier canInvoke(
-        address contractAddress, 
-        string memory method, 
-        address sender
-    ) 
-    {
-        bool s = false;
-        bytes32 k = keccak256(abi.encodePacked(contractAddress,method));
-        address[] memory addrs = new address[](1);
-        addrs[0] = sender;
-        uint8[][] memory roles = ICommunity(communityAddress).getRoles(addrs);
-        for (uint256 i = 0; i < roles[0].length; i++) {
-            if (methods[k].invokeRolesAllowed.contains(roleIDs[roles[0][i]])) {
-                s = true;
-            }
-        }
-        if (s == false) {
-            revert MissingInvokeRole(sender);
-        }
-        _;
-    }
+    
     
     //----------------------------------------------------
     // events section 
@@ -300,38 +280,38 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         string memory params
     )
         public 
-        canInvoke(contractAddress, method, _msgSender())
         returns(uint256 invokeID, uint40 invokeIDWei)
     {
+        validateCanInvoke(_msgSender());
         bytes32 k = keccak256(abi.encodePacked(contractAddress,method));
         if (methods[k].exists == false) {
             revert UnknownMethod(contractAddress, method);
         }
         
         heartbeat();
-        
+
         invokeID = generateInvokeID();
         invokeIDWei = uint40(invokeID);
         
         groups[currentGroupIndex].pairWeiInvokeId[invokeIDWei] = invokeID;
-        
-        emit OperationInvoked(invokeID, invokeIDWei, contractAddress, method, params);
-        
+
         groups[currentGroupIndex].operations[invokeID].addr = methods[k].addr;
         groups[currentGroupIndex].operations[invokeID].method = methods[k].method;
         groups[currentGroupIndex].operations[invokeID].params = params;
-        groups[currentGroupIndex].operations[invokeID].minimum = methods[k].minimum;
-        groups[currentGroupIndex].operations[invokeID].fraction = methods[k].fraction;
+        // groups[currentGroupIndex].operations[invokeID].minimum = methods[k].minimum;
+        // groups[currentGroupIndex].operations[invokeID].fraction = methods[k].fraction;
         
         groups[currentGroupIndex].operations[invokeID].exists = true;
-        
+
+        emit OperationInvoked(invokeID, invokeIDWei, contractAddress, method, params);
+       
         _accountForOperation(
             OPERATION_INVOKE << OPERATION_SHIFT_BITS,
             uint256(uint160(contractAddress)),
             0
         );
     }
-    
+
     /**
      * @param invokeID result of previous call to invoke()
      */
@@ -346,7 +326,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
 
     /**
      * @param contractAddress token's address
-     * @param method hexademical method's string
+     * @param method hexademical method's string (without prefix '0x')
      */
     function addMethod(
         address contractAddress,
@@ -462,6 +442,32 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     // internal section 
     //----------------------------------------------------
     
+    function validateCanInvoke(
+        address sender
+    ) 
+        internal
+        view
+    {
+        bool s = false;
+
+        address[] memory addrs = new address[](1);
+        addrs[0] = sender;
+        uint8[][] memory roles = ICommunity(communityAddress).getRoles(addrs);
+
+        uint256 expectGroupIndex = _getExpectGroupIndex();        
+        for (uint256 i = 0; i < roles[0].length; i++) {
+            for (uint256 j = expectGroupIndex; i < 0; i--) {
+                if (groups[j].invokeRoles.contains(roleIDs[roles[0][i]])) {
+                    s = true;
+                }
+            }
+        }
+        if (s == false) {
+            revert MissingInvokeRole(sender);
+        }
+        
+    }
+
     /**
     * @return index expected groupIndex.
     */
@@ -495,7 +501,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         // note that `invokeID` can be zero if come from _receive !! and tx should be revert
         if (operation.exists == false) {revert UnknownInvokeId(invokeID);}
 
-        uint8[] memory roles = getEndorsedRoles(operation.addr, operation.method, _msgSender());
+        uint8[] memory roles = getEndorsedRoles(_msgSender());
         if (roles.length == 0) {
             revert MissingEndorseRole(_msgSender());
         }
@@ -583,16 +589,16 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
  
     
     /**
-     * getting all endorse roles by sender's address and expected pair contract/method
+     * getting all endorse roles by sender's address and expected pair contract/method. which available from current group and upper
      * 
-     * @param contractAddress token's address
-     * @param method hexademical method's string
+     * param contractAddress token's address
+     * param method hexademical method's string
      * @param sender sender address
      * @return endorse roles 
      */
     function getEndorsedRoles(
-        address contractAddress, 
-        string memory method, 
+        // address contractAddress, 
+        // string memory method, 
         address sender
     ) 
         internal 
@@ -604,18 +610,31 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
 
         uint8[][] memory roles = ICommunity(communityAddress).getRoles(addrs);
         uint256 len;
+        
+        uint256 expectGroupIndex = _getExpectGroupIndex();
+        for ( uint256 i = 0; i < roles.length; i++) {
 
-        for (uint256 i = 0; i < roles.length; i++) {
-            if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[0][i]])) {
-                len += 1;
+            // if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[0][i]])) {
+            //     len += 1;
+            // }
+            for ( uint256 j = 0; j <= expectGroupIndex; j++) {
+                if (groups[j].endorseRoles.contains(roleIDs[roles[0][i]])) {
+                    len += 1;
+                }
             }
         }
         uint8[] memory list = new uint8[](len);
-        uint256 j = 0;
+        uint256 listIndex = 0;
         for (uint256 i = 0; i < roles[0].length; i++) {
-            if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[0][i]])) {
-                list[j] = roles[0][i];
-                j += 1;
+            // if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[0][i]])) {
+            //     list[listIndex] = roles[0][i];
+            //     listIndex += 1;
+            // }
+            for ( uint256 j = 0; j <= expectGroupIndex; j++) {
+                if (groups[j].endorseRoles.contains(roleIDs[roles[0][i]])) {
+                    list[listIndex] = roles[0][i];
+                    listIndex += 1;
+                }
             }
         }
         return list;

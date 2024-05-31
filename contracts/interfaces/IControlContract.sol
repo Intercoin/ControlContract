@@ -24,8 +24,6 @@ interface IControlContract {
         address addr;
         string method;
         bool exists;
-        EnumerableSetUpgradeable.UintSet invokeRolesAllowed;
-        EnumerableSetUpgradeable.UintSet endorseRolesAllowed;
     }
 
     struct Group {
