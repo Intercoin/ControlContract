@@ -100,7 +100,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     mapping(uint256 => Group) internal groups;
     
     error RoleDoesNotExist(uint8 roleID);
-    error MethodAlreadyRegistered(string method, uint256 minimum, uint256 fraction);
+    error MethodAlreadyRegistered(address contractAddress,string method);
     error UnknownInvokeId(uint256 invokeID);
     error UnknownMethod(address contractAddress, string method);
     error MissingInvokeRole(address sender);
@@ -347,45 +347,23 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     /**
      * @param contractAddress token's address
      * @param method hexademical method's string
-     * @param invokeRoleId invoke role id
-     * @param endorseRoleId endorse role id
-     * @param minimum  minimum
-     * @param fraction fraction value mul by 1e10
      */
     function addMethod(
         address contractAddress,
-        string memory method,
-        uint8 invokeRoleId,
-        uint8 endorseRoleId,
-        uint256 minimum,
-        uint256 fraction
+        string memory method
     )
         public 
         onlyOwner 
     {
         bytes32 k = keccak256(abi.encodePacked(contractAddress,method));
         
-        if (!roleExists(invokeRoleId)) {
-            revert RoleDoesNotExist(invokeRoleId);
-        }
-        
-        // require(methods[k].exists == false, "Such method has already registered");
-        if (methods[k].exists == false) {
-
-        } else {
-            if ((methods[k].minimum == minimum) && (methods[k].fraction == fraction)) {
-            } else {
-                revert MethodAlreadyRegistered(method, minimum, fraction);
-            }
+        if (methods[k].exists) {
+            revert MethodAlreadyRegistered(contractAddress,method);
         }
         
         methods[k].exists = true;
         methods[k].addr = contractAddress;
         methods[k].method = method;
-        methods[k].minimum = minimum;
-        methods[k].fraction = fraction;
-        methods[k].invokeRolesAllowed.add(roleIDs[invokeRoleId]);
-        methods[k].endorseRolesAllowed.add(roleIDs[endorseRoleId]);
         
         _accountForOperation(
             OPERATION_ADD_METHOD << OPERATION_SHIFT_BITS,
@@ -469,6 +447,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     
     /**
      * @return index expected groupIndex.
+
      */
     function getExpectGroupIndex(
     ) 

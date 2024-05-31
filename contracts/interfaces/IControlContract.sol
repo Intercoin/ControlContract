@@ -23,8 +23,6 @@ interface IControlContract {
     struct Method {
         address addr;
         string method;
-        uint256 minimum;
-        uint256 fraction;
         bool exists;
         EnumerableSetUpgradeable.UintSet invokeRolesAllowed;
         EnumerableSetUpgradeable.UintSet endorseRolesAllowed;
