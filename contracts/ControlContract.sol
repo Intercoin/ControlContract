@@ -277,7 +277,10 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     function invoke(
         address contractAddress,
         string memory method,
-        string memory params
+        string memory params,
+        uint256 minimum,
+        uint256 fraction,
+        uint64 delay
     )
         public 
         returns(uint256 invokeID, uint40 invokeIDWei)
@@ -298,8 +301,9 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         groups[currentGroupIndex].operations[invokeID].addr = methods[k].addr;
         groups[currentGroupIndex].operations[invokeID].method = methods[k].method;
         groups[currentGroupIndex].operations[invokeID].params = params;
-        // groups[currentGroupIndex].operations[invokeID].minimum = methods[k].minimum;
-        // groups[currentGroupIndex].operations[invokeID].fraction = methods[k].fraction;
+        groups[currentGroupIndex].operations[invokeID].minimum = minimum;
+        groups[currentGroupIndex].operations[invokeID].fraction = fraction;
+        groups[currentGroupIndex].operations[invokeID].delay = delay;
         
         groups[currentGroupIndex].operations[invokeID].exists = true;
 
