@@ -11,6 +11,7 @@ interface IControlContract {
         string params;
         uint256 minimum;
         uint256 fraction;
+        uint64 delay;
         EnumerableSetUpgradeable.AddressSet endorsedAccounts;
         uint64 approvedTime;
         bool executed;
@@ -23,11 +24,7 @@ interface IControlContract {
     struct Method {
         address addr;
         string method;
-        uint256 minimum;
-        uint256 fraction;
         bool exists;
-        EnumerableSetUpgradeable.UintSet invokeRolesAllowed;
-        EnumerableSetUpgradeable.UintSet endorseRolesAllowed;
     }
 
     struct Group {

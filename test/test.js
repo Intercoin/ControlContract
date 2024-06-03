@@ -85,6 +85,7 @@ describe("Community", function () {
                     bob,
                     charlie,
                     rolesIndex,
+                    WITHOUT_EXECUTION_DELAY,
                     SomeExternalMock,
                     ControlContract
                 } = await loadFixture(deployWithoutDelay);
@@ -96,12 +97,7 @@ describe("Community", function () {
                 // await ControlContractInstance.allowEndorse('members',SomeExternalMockInstance.address,funcHexademicalStr,{ from: accountTen });
                 await ControlContract.connect(owner).addMethod(
                     SomeExternalMock.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('sub-admins'),
-                    rolesIndex.get('members'),
-                    2, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
+                    funcHexademicalStr
                 )
                 var invokeID; 
 
@@ -110,8 +106,10 @@ describe("Community", function () {
                 tx = await ControlContract.connect(alice).invoke(
                     SomeExternalMock.target,
                     funcHexademicalStr,
-                    '' //string memory params
-                    ,
+                    '', //string memory params
+                    2, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
                 );
                 
                 rc = await tx.wait(); // 0ms, as tx is already confirmed
@@ -129,8 +127,65 @@ describe("Community", function () {
                 
             });
 
+            it('should `invoke` only for methods defined before', async () => {
+                const {
+                    alice,
+                    david,
+                    WITHOUT_EXECUTION_DELAY,                    
+                    ERC20Mintable,
+                    ControlContract
+                } = await loadFixture(deployWithoutDelay);
+
+                const populatedTx = await ERC20Mintable.mint.populateTransaction(david.address, ethers.parseEther("10.0"));
+                let funcHexademicalStr = populatedTx.data.substr(2,8);
+                let memoryParamsHexademicalStr = populatedTx.data.substr(10,populatedTx.data.length-10);
+
+                await expect(
+                    ControlContract.connect(alice).invoke(
+                        ERC20Mintable.target,
+                        funcHexademicalStr,
+                        memoryParamsHexademicalStr, //string memory params
+                        2, //minimum,
+                        1, //fraction
+                        WITHOUT_EXECUTION_DELAY
+                    )
+                ).to.be.revertedWithCustomError(ControlContract, 'UnknownMethod').withArgs(ERC20Mintable.target, funcHexademicalStr);
+
+            });
+
+            it('should `invoke` only person with invoke role', async () => {
+                const {
+                    owner,
+                    david,
+                    bob,
+                    WITHOUT_EXECUTION_DELAY,                    
+                    ERC20Mintable,
+                    ControlContract
+                } = await loadFixture(deployWithoutDelay);
+
+                const populatedTx = await ERC20Mintable.mint.populateTransaction(david.address, ethers.parseEther("10.0"));
+                let funcHexademicalStr = populatedTx.data.substr(2,8);
+                let memoryParamsHexademicalStr = populatedTx.data.substr(10,populatedTx.data.length-10);
+
+                await ControlContract.connect(owner).addMethod(
+                    ERC20Mintable.target,
+                    funcHexademicalStr
+                )
+
+                await expect(
+                    ControlContract.connect(bob).invoke(
+                        ERC20Mintable.target,
+                        funcHexademicalStr,
+                        memoryParamsHexademicalStr, //string memory params
+                        2, //minimum,
+                        1, //fraction
+                        WITHOUT_EXECUTION_DELAY
+                    )
+                ).to.be.revertedWithCustomError(ControlContract, 'MissingInvokeRole').withArgs(bob.address);
+            });
+
             it('with params (mint tokens)', async () => {
-                
+               
                 const {
                     owner,
                     alice,
@@ -138,6 +193,7 @@ describe("Community", function () {
                     charlie,
                     david,
                     rolesIndex,
+                    WITHOUT_EXECUTION_DELAY,                    
                     ERC20Mintable,
                     ControlContract
                 } = await loadFixture(deployWithoutDelay);
@@ -146,20 +202,22 @@ describe("Community", function () {
                 
                 var counterBefore = await ERC20Mintable.balanceOf(david.address);
 
-                // transfer to david 10 tokens    
+                // mint to david 10 tokens    
                 //0x40c10f19000000000000000000000000ea674fdde714fd979de3edf0f56aa9716b898ec80000000000000000000000000000000000000000000000008ac7230489e80000
-                let funcHexademicalStr = '40c10f19';
-                let memoryParamsHexademicalStr = '000000000000000000000000'+((david.address).replace('0x',''))+'0000000000000000000000000000000000000000000000008ac7230489e80000';
+                const populatedTx = await ERC20Mintable.mint.populateTransaction(david.address, ethers.parseEther("10.0"));
+
+                // let funcHexademicalStr = '40c10f19';
+                // let memoryParamsHexademicalStr = '000000000000000000000000'+((david.address).replace('0x',''))+'0000000000000000000000000000000000000000000000008ac7230489e80000';
+                let funcHexademicalStr = populatedTx.data.substr(2,8);
+                let memoryParamsHexademicalStr = populatedTx.data.substr(10,populatedTx.data.length-10);
+
                 // await ControlContractInstance.allowInvoke('sub-admins',ERC20MintableInstance.address,funcHexademicalStr,{ from: accountTen });
                 // await ControlContractInstance.allowEndorse('members',ERC20MintableInstance.address,funcHexademicalStr,{ from: accountTen });
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('sub-admins'),
-                    rolesIndex.get('members'),
-                    2, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
+                    funcHexademicalStr
+                    // rolesIndex.get('sub-admins'),
+                    // rolesIndex.get('members')
                 )
                 
                 var invokeID,invokeIDWei; 
@@ -167,8 +225,10 @@ describe("Community", function () {
                 let tx = await ControlContract.connect(alice).invoke(
                     ERC20Mintable.target,
                     funcHexademicalStr,
-                    memoryParamsHexademicalStr //string memory params
-                    ,
+                    memoryParamsHexademicalStr, //string memory params
+                    2, //minimum,
+                    1, //fraction
+                    WITHOUT_EXECUTION_DELAY
                 );
                 
                 let rc = await tx.wait(); // 0ms, as tx is already confirmed
@@ -203,6 +263,7 @@ describe("Community", function () {
                     bob,
                     charlie,
                     rolesIndex,
+                    WITHOUT_EXECUTION_DELAY,
                     ControlContract
                 } = await loadFixture(deployWithoutDelay);
 
@@ -220,12 +281,7 @@ describe("Community", function () {
 
                 await ControlContract.connect(owner).addMethod(
                     ControlContract.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('sub-admins'),
-                    rolesIndex.get('members'),
-                    2, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
+                    funcHexademicalStr
                 );
                 
                 var invokeID,invokeIDWei; 
@@ -233,8 +289,10 @@ describe("Community", function () {
                 let tx = await ControlContract.connect(alice).invoke(
                     ControlContract.target,
                     funcHexademicalStr,
-                    memoryParamsHexademicalStr //string memory params
-                    ,
+                    memoryParamsHexademicalStr, //string memory params
+                    2, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
                 );
                 
                 let rc = await tx.wait(); // 0ms, as tx is already confirmed
@@ -266,6 +324,7 @@ describe("Community", function () {
                     charlie,
                     rolesIndex,
                     WITH_DELAY,
+                    WITHOUT_EXECUTION_DELAY,
                     ControlContract
                 } = await loadFixture(deployWithDelay);
 
@@ -279,20 +338,17 @@ describe("Community", function () {
                 // await ControlContractInstance.allowEndorse('members',SomeExternalMockInstance.address,funcHexademicalStr,{ from: accountTen });
                 await ControlContract.connect(owner).addMethod(
                     SomeExternalMock.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('sub-admins'),
-                    rolesIndex.get('members'),
-                    2, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
+                    funcHexademicalStr
                 )
                 var invokeID; 
 
                 let tx = await ControlContract.connect(alice).invoke(
                     SomeExternalMock.target,
                     funcHexademicalStr,
-                    '' //string memory params
-                    ,
+                    '', //string memory params
+                    2, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
                 );
                 
                 let rc = await tx.wait(); // 0ms, as tx is already confirmed
@@ -316,6 +372,69 @@ describe("Community", function () {
                 expect(counterAfter2-counterBefore).to.be.eq(1n);
                 
             });
+
+            it('execute can not be twice', async () => {
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    eve,
+                    rolesIndex,
+                    WITH_DELAY,
+                    WITHOUT_EXECUTION_DELAY,
+                    ERC20Mintable,
+                    ControlContract
+                } = await loadFixture(deployWithDelay);
+
+                await ERC20Mintable.connect(owner).transferOwnership(ControlContract.target);
+                
+                const eveBalalanceBefore = await ERC20Mintable.balanceOf(eve.address);
+                const populatedTx = await ERC20Mintable.mint.populateTransaction(eve.address, ethers.parseEther("10.0"));
+                let funcHexademicalStr = populatedTx.data.substr(2,8);
+                let memoryParamsHexademicalStr = populatedTx.data.substr(10,populatedTx.data.length-10);
+
+                await ControlContract.connect(owner).addMethod(
+                    ERC20Mintable.target,
+                    funcHexademicalStr
+                );
+
+                let currentGroupIndex = await ControlContract.getCurrentGroupIndex();
+                const tx = await ControlContract.connect(alice).invoke(
+                    ERC20Mintable.target,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr, //string memory params
+                    1, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
+                );
+                let rc = await tx.wait(); // 0ms, as tx is already confirmed
+                let event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
+                //invokeID, invokeIDWei, tokenAddr, method, params
+                var invokeID; 
+                [invokeID,,,,] = event.args;
+
+                await ControlContract.connect(bob).endorse(invokeID);
+
+                const eveBalalanceAfterEndorseAndBeforeExecute = await ERC20Mintable.balanceOf(eve.address);
+
+                await expect(
+                    ControlContract.connect(bob).execute(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'MinimumDelayMustElapse').withArgs(invokeID);
+
+                await time.increase(WITH_DELAY+10n);
+
+                await ControlContract.connect(bob).execute(invokeID)
+                const eveBalalanceAfterExecute = await ERC20Mintable.balanceOf(eve.address);
+
+                await expect(
+                    ControlContract.connect(bob).execute(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'AlreadyExecuted').withArgs(invokeID);
+
+                expect(eveBalalanceAfterExecute - eveBalalanceBefore).to.be.eq(ethers.parseEther('10'));
+                expect(eveBalalanceAfterEndorseAndBeforeExecute).to.be.eq(eveBalalanceBefore);
+
+            });
         });
 
         describe("example transferownersip", function () {
@@ -329,11 +448,15 @@ describe("Community", function () {
                     charlie,
                     eve,
                     rolesIndex,
+                    WITHOUT_EXECUTION_DELAY,
                     ERC20Mintable,
                     CommunityMock,
                     ControlContract
                 } = res;
-
+                // [
+                //     [rolesIndex.get('group1_can_invoke'),rolesIndex.get('group1_can_endorse')],
+                //     [rolesIndex.get('group2_can_invoke'),rolesIndex.get('group2_can_endorse')],
+                // ], 
                 await CommunityMock.setRoles(alice.address, [rolesIndex.get('group1_can_invoke')]);
                 await CommunityMock.setRoles(bob.address, [rolesIndex.get('group1_can_endorse')]);
                 await CommunityMock.setRoles(charlie.address, [rolesIndex.get('group1_can_endorse')]);
@@ -347,19 +470,16 @@ describe("Community", function () {
 
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('group1_can_invoke'),
-                    rolesIndex.get('group1_can_endorse'),
-                    2, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
+                    funcHexademicalStr
                 )
                 
                 let tx = await ControlContract.connect(alice).invoke(
                     ERC20Mintable.target,
                     funcHexademicalStr,
-                    memoryParamsHexademicalStr //string memory params
-                    ,
+                    memoryParamsHexademicalStr, //string memory params
+                    2, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
                 );
                 
                 var invokeID; 
@@ -416,6 +536,7 @@ describe("Community", function () {
                     charlie,
                     rolesIndex,
                     groupTimeoutActivity,
+                    WITHOUT_EXECUTION_DELAY,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr,
                     ERC20Mintable,
@@ -424,37 +545,27 @@ describe("Community", function () {
 
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('group1_can_invoke'),
-                    rolesIndex.get('group1_can_endorse'),
-                    1, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
+                    funcHexademicalStr
+                    // rolesIndex.get('group1_can_invoke'),
+                    // rolesIndex.get('group1_can_endorse'),
                 )
                 
-                const rndMinimum = 221n;
-                const rndFraction = 331n;
                 await expect(
                     ControlContract.connect(owner).addMethod(
                         ERC20Mintable.target,
-                        funcHexademicalStr,
-                        rolesIndex.get('group2_can_invoke'),
-                        rolesIndex.get('group2_can_endorse'),
-                        rndMinimum, //uint256 minimum,
-                        rndFraction //uint256 fraction
-                        ,
+                        funcHexademicalStr
+                        // rolesIndex.get('group2_can_invoke'),
+                        // rolesIndex.get('group2_can_endorse'),
                     )
-                ).to.be.revertedWithCustomError(ControlContract, 'MethodAlreadyRegistered').withArgs(funcHexademicalStr, rndMinimum, rndFraction);
+                ).to.be.revertedWithCustomError(ControlContract, 'MethodAlreadyRegistered').withArgs(ERC20Mintable.target, funcHexademicalStr);
                 
-                await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('group2_can_invoke'),
-                    rolesIndex.get('group2_can_endorse'),
-                    1, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
-                );
+                // await ControlContract.connect(owner).addMethod(
+                //     ERC20Mintable.target,
+                //     funcHexademicalStr
+                //     // rolesIndex.get('group2_can_invoke'),
+                //     // rolesIndex.get('group2_can_endorse'),
+                    
+                // );
                 
                 var invokeID,invokeIDWei,currentGroupIndex; 
                 await ControlContract.connect(alice).heartbeat();
@@ -466,8 +577,10 @@ describe("Community", function () {
                     ControlContract.connect(charlie).invoke(
                         ERC20Mintable.target,
                         funcHexademicalStr,
-                        memoryParamsHexademicalStr //string memory params
-                        ,
+                        memoryParamsHexademicalStr, //string memory params
+                        1, //uint256 minimum,
+                        1, //uint256 fraction
+                        WITHOUT_EXECUTION_DELAY
                     )
                 ).to.be.revertedWithCustomError(ControlContract, 'SenderIsNotInCurrentOwnerGroup').withArgs(charlie.address, currentGroupIndex);
                                       
@@ -482,8 +595,10 @@ describe("Community", function () {
                 await ControlContract.connect(charlie).invoke(
                     ERC20Mintable.target,
                     funcHexademicalStr,
-                    memoryParamsHexademicalStr //string memory params
-                    ,
+                    memoryParamsHexademicalStr, //string memory params
+                    1, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
                 );
 
                 //return ownership by alice for group1
@@ -496,15 +611,17 @@ describe("Community", function () {
                     ControlContract.connect(charlie).invoke(
                         ERC20Mintable.target,
                         funcHexademicalStr,
-                        memoryParamsHexademicalStr //string memory params
-                        ,
+                        memoryParamsHexademicalStr, //string memory params
+                        1, //uint256 minimum,
+                        1, //uint256 fraction
+                        WITHOUT_EXECUTION_DELAY
                     )
                 ).to.be.revertedWithCustomError(ControlContract, 'SenderIsNotInCurrentOwnerGroup').withArgs(charlie.address, currentGroupIndex);
 
                 
             });
 
-            it('changed ownership if first group did not send any transaction', async () => {
+            it('if first group#1 is not active, group#2 can be able to invoke', async () => {
 
                 const res = await loadFixture(deployForTimetests);
                 const {
@@ -514,36 +631,25 @@ describe("Community", function () {
                     groupTimeoutActivity,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr,
+                    WITHOUT_EXECUTION_DELAY,
                     ERC20Mintable,
                     ControlContract
                 } = res;
 
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('group1_can_invoke'),
-                    rolesIndex.get('group1_can_endorse'),
-                    1, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
+                    funcHexademicalStr
                 )
-                await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('group2_can_invoke'),
-                    rolesIndex.get('group2_can_endorse'),
-                    1, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
-                )
-
+                
                 let currentGroupIndex = await ControlContract.getCurrentGroupIndex();
                 await expect(
                     ControlContract.connect(charlie).invoke(
                         ERC20Mintable.target,
                         funcHexademicalStr,
-                        memoryParamsHexademicalStr //string memory params
-                        ,
+                        memoryParamsHexademicalStr, //string memory params
+                        1, //uint256 minimum,
+                        1, //uint256 fraction
+                        WITHOUT_EXECUTION_DELAY
                     )
                 ).to.be.revertedWithCustomError(ControlContract, 'SenderIsNotInCurrentOwnerGroup').withArgs(charlie.address, currentGroupIndex);
 
@@ -552,13 +658,15 @@ describe("Community", function () {
                 await ControlContract.connect(charlie).invoke(
                     ERC20Mintable.target,
                     funcHexademicalStr,
-                    memoryParamsHexademicalStr //string memory params
-                    ,
+                    memoryParamsHexademicalStr, //string memory params
+                    1, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
                 );
 
             });
 
-            it('try to change ownership if first group got error via transaction', async () => {
+            it('if first group#1 lost access and then made transaction which reverted, Group#2 didnt lose `ownership`', async () => {
                 
                 const res = await loadFixture(deployForTimetests);
                 const {
@@ -570,36 +678,25 @@ describe("Community", function () {
                     groupTimeoutActivity,
                     funcHexademicalStr,
                     memoryParamsHexademicalStr,
+                    WITHOUT_EXECUTION_DELAY,
                     ERC20Mintable,
                     ControlContract
                 } = res;
                     
                 await ControlContract.connect(owner).addMethod(
                     ERC20Mintable.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('group1_can_invoke'),
-                    rolesIndex.get('group1_can_endorse'),
-                    1, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
+                    funcHexademicalStr
                 )
-                await ControlContract.connect(owner).addMethod(
-                    ERC20Mintable.target,
-                    funcHexademicalStr,
-                    rolesIndex.get('group2_can_invoke'),
-                    rolesIndex.get('group2_can_endorse'),
-                    1, //uint256 minimum,
-                    1 //uint256 fraction
-                    ,
-                )
-
+               
                 await time.increase(groupTimeoutActivity+10n);
                 
                 await ControlContract.connect(charlie).invoke(
                     ERC20Mintable.target,
                     funcHexademicalStr,
-                    memoryParamsHexademicalStr //string memory params
-                    ,
+                    memoryParamsHexademicalStr, //string memory params
+                    1, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
                 );
                 
                 let invokeIDWeiWrong = 123123;
@@ -611,16 +708,235 @@ describe("Community", function () {
                     ControlContract.connect(bob).endorse(invokeIDWeiWrong)
                 ).to.be.revertedWithCustomError(ControlContract, 'UnknownInvokeId').withArgs(invokeIDWeiWrong);
 
-                // group2 membbers still owner of contract and still can invoke
+                // group2 members still owner of contract and still can invoke
                 await ControlContract.connect(charlie).invoke(
                     ERC20Mintable.target,
                     funcHexademicalStr,
-                    memoryParamsHexademicalStr //string memory params
-                    ,
+                    memoryParamsHexademicalStr, //string memory params
+                    1, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
                 );
                 
             });
-            
+
+            it('if first group#1 invokes transaction but in later becomes inactive, group#2 should endorce or execute transaction', async () => {
+                const res = await loadFixture(deployForTimetests);
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    david,
+                    eve,
+                    rolesIndex,
+                    groupTimeoutActivity,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr,
+                    WITHOUT_EXECUTION_DELAY,
+                    ERC20Mintable,
+                    ControlContract
+                } = res;
+                // here funcHexademicalStr and memoryParamsHexademicalStr - are trasnfer to Eve 10 tokens    
+                const eveBalalanceBefore = await ERC20Mintable.balanceOf(eve.address);
+                await ControlContract.connect(owner).addMethod(
+                    ERC20Mintable.target,
+                    funcHexademicalStr
+                )
+                let currentGroupIndex = await ControlContract.getCurrentGroupIndex();
+                const tx = await ControlContract.connect(alice).invoke(
+                    ERC20Mintable.target,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr, //string memory params
+                    1, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
+                );
+
+                let rc = await tx.wait(); // 0ms, as tx is already confirmed
+                let event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
+                //invokeID, invokeIDWei, tokenAddr, method, params
+                var invokeID; 
+                [invokeID,,,,] = event.args;
+
+                // charlie and david are not in current owner group
+                await expect(
+                    ControlContract.connect(charlie).endorse(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'SenderIsNotInCurrentOwnerGroup').withArgs(charlie.address, currentGroupIndex);
+
+                await expect(
+                    ControlContract.connect(david).endorse(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'SenderIsNotInCurrentOwnerGroup').withArgs(david.address, currentGroupIndex);
+
+                await time.increase(groupTimeoutActivity+10n);
+
+                // charlie has invoke role not endorse
+                await expect(
+                    ControlContract.connect(charlie).endorse(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'MissingEndorseRole').withArgs(charlie.address);
+
+                await ControlContract.connect(david).endorse(invokeID);
+
+                const eveBalalanceAfter = await ERC20Mintable.balanceOf(eve.address);
+                expect(eveBalalanceAfter - eveBalalanceBefore).to.be.eq(ethers.parseEther('10'));
+            });
+
+            it('execution delay', async () => {
+                const res = await loadFixture(deployForTimetests);
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    eve,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr,
+                    WITH_EXECUTION_DELAY,
+                    ERC20Mintable,
+                    ControlContract
+                } = res;
+
+                await ControlContract.connect(owner).addMethod(
+                    ERC20Mintable.target,
+                    funcHexademicalStr
+                )
+                
+                const eveBalalanceBefore = await ERC20Mintable.balanceOf(eve.address);
+
+                const tx = await ControlContract.connect(alice).invoke(
+                    ERC20Mintable.target,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr, //string memory params
+                    1, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITH_EXECUTION_DELAY
+                );
+                let rc = await tx.wait(); // 0ms, as tx is already confirmed
+                let event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
+                //invokeID, invokeIDWei, tokenAddr, method, params
+                var invokeID; 
+                [invokeID,,,,] = event.args;
+
+                await expect(
+                    ControlContract.connect(bob).execute(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'NotYetApproved').withArgs(invokeID);
+
+                await ControlContract.connect(bob).endorse(invokeID);
+                const eveBalalanceAfterEndorse = await ERC20Mintable.balanceOf(eve.address);
+                await expect(
+                    ControlContract.connect(bob).execute(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'OperationDelayMustElapse').withArgs(invokeID);
+
+                await time.increase(WITH_EXECUTION_DELAY+10n);
+
+                const wrongInvokeID = 552200554444n;
+                await expect(
+                    ControlContract.connect(bob).execute(wrongInvokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'UnknownInvokeId').withArgs(wrongInvokeID);
+
+                await ControlContract.connect(bob).execute(invokeID)
+                const eveBalalanceAfterExecution = await ERC20Mintable.balanceOf(eve.address);
+
+                expect(eveBalalanceBefore).to.be.eq(eveBalalanceAfterEndorse);
+                expect(eveBalalanceAfterExecution-eveBalalanceBefore).to.be.eq(ethers.parseEther('10'));
+
+            });
+
+            it('shouldnt endorse after execute', async () => {
+                const res = await loadFixture(deployForTimetests);
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    rolesIndex,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr,
+                    WITHOUT_EXECUTION_DELAY,
+                    ERC20Mintable,
+                    CommunityMock,
+                    ControlContract
+                } = res;
+
+                await ControlContract.connect(owner).addMethod(
+                    ERC20Mintable.target,
+                    funcHexademicalStr
+                )
+                let currentGroupIndex = await ControlContract.getCurrentGroupIndex();
+                const tx = await ControlContract.connect(alice).invoke(
+                    ERC20Mintable.target,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr, //string memory params
+                    1, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
+                );
+                let rc = await tx.wait(); // 0ms, as tx is already confirmed
+                let event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
+                //invokeID, invokeIDWei, tokenAddr, method, params
+                var invokeID; 
+                [invokeID,,,,] = event.args;
+
+                await expect(
+                    ControlContract.connect(bob).execute(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'NotYetApproved').withArgs(invokeID);
+
+                await ControlContract.connect(bob).endorse(invokeID); // operation here immediately executed
+
+                await CommunityMock.setRoles(charlie.address, [rolesIndex.get('group1_can_endorse')]);
+
+                await expect(
+                    ControlContract.connect(charlie).endorse(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'AlreadyExecuted').withArgs(invokeID);
+            });
+
+            it('shouldnt execute twice', async () => {
+
+                const res = await loadFixture(deployForTimetests);
+                const {
+                    owner,
+                    alice,
+                    bob,
+                    charlie,
+                    david,
+                    eve,
+                    rolesIndex,
+                    groupTimeoutActivity,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr,
+                    WITHOUT_EXECUTION_DELAY,
+                    ERC20Mintable,
+                    ControlContract
+                } = res;
+
+                await ControlContract.connect(owner).addMethod(
+                    ERC20Mintable.target,
+                    funcHexademicalStr
+                )
+                let currentGroupIndex = await ControlContract.getCurrentGroupIndex();
+                const tx = await ControlContract.connect(alice).invoke(
+                    ERC20Mintable.target,
+                    funcHexademicalStr,
+                    memoryParamsHexademicalStr, //string memory params
+                    1, //uint256 minimum,
+                    1, //uint256 fraction
+                    WITHOUT_EXECUTION_DELAY
+                );
+                let rc = await tx.wait(); // 0ms, as tx is already confirmed
+                let event = rc.logs.find(event => event.fragment.name === 'OperationInvoked');
+                //invokeID, invokeIDWei, tokenAddr, method, params
+                var invokeID; 
+                [invokeID,,,,] = event.args;
+
+                await expect(
+                    ControlContract.connect(bob).execute(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'NotYetApproved').withArgs(invokeID);
+
+                await ControlContract.connect(bob).endorse(invokeID);
+
+                await expect(
+                    ControlContract.connect(bob).execute(invokeID)
+                ).to.be.revertedWithCustomError(ControlContract, 'AlreadyExecuted').withArgs(invokeID);
+            });
         });
         
     });

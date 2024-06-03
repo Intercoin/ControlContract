@@ -12,6 +12,8 @@ async function deployBase() {
     const NO_COSTMANAGER = ZERO_ADDRESS;
     const WITHOUT_DELAY = 0n;
     const WITH_DELAY = 65000n;  //max 2**16 = 65536
+    const WITHOUT_EXECUTION_DELAY = 0n;
+    const WITH_EXECUTION_DELAY = 65000n;  //max 2**16 = 65536
 
     const ReleaseManagerFactoryF = await ethers.getContractFactory("MockReleaseManagerFactory");
     const CostManagerGoodF = await ethers.getContractFactory("MockCostManagerGood");
@@ -104,6 +106,8 @@ async function deployBase() {
         NO_COSTMANAGER,
         WITHOUT_DELAY,
         WITH_DELAY,
+        WITHOUT_EXECUTION_DELAY,
+        WITH_EXECUTION_DELAY,
         rolesTitle,
         rolesIndex,
 
@@ -246,7 +250,7 @@ async function deployForTimetests() {
     await CommunityMock.setRoles(charlie.address, [rolesIndex.get('group2_can_invoke')]);
     await CommunityMock.setRoles(david.address, [rolesIndex.get('group2_can_endorse')]);
 
-    // transfer to accountFive 10 tokens    
+    // transfer to eve 10 tokens    
     //0x40c10f19000000000000000000000000ea674fdde714fd979de3edf0f56aa9716b898ec80000000000000000000000000000000000000000000000008ac7230489e80000
     const funcHexademicalStr = '40c10f19';
     const memoryParamsHexademicalStr = '000000000000000000000000'+(eve.address.replace('0x',''))+'0000000000000000000000000000000000000000000000008ac7230489e80000';

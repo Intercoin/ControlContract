@@ -15,4 +15,4 @@ remix-compiler.config.js
 /bin
 scripts/arguments.json
 coverage.json
-/coverage
+coverage
