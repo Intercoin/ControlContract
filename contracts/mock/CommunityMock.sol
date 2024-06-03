@@ -30,9 +30,9 @@ contract CommunityMock is OwnableUpgradeable, ICommunity {
     }
     
     function setRoles(address member, uint8[] memory _roles) public {
-        uint256 len;
+        //uint256 len;
         for(uint256 i = 0; i < _roles.length; i++) {
-            len = roles[member].length;
+            //len = roles[member].length;
             roles[member].push(_roles[i]);
         }
     }

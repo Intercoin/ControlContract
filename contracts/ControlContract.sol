@@ -110,6 +110,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     error AlreadyExecuted(uint256 invokeID);
     error NotYetApproved(uint256 invokeID);
     error MinimumDelayMustElapse(uint256 invokeID);
+    error OperationDelayMustElapse(uint256 invokeID);
     error EmptyCommunityAddress();
     error NoGroups();
     error RoleExistsOrInvokeEqualEndorse();
@@ -525,7 +526,6 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         } else {
             revert UnknownInvokeId(invokeID);
         }
-        
         uint8[] memory roles = getEndorsedRoles(_msgSender());
         if (roles.length == 0) {
             revert MissingEndorseRole(_msgSender());
@@ -538,13 +538,15 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         if (operation.executed == true) {
             revert AlreadyExecuted(invokeID);
         }
-        
+
         operation.endorsedAccounts.add(_msgSender());
         
         emit OperationEndorsed(invokeID, uint40(invokeID));
         
         uint256 memberCount;
+
         for (uint256 i = 0; i < roles.length; i++) {
+
             memberCount = ICommunity(communityAddress).addressesCount(roles[i]);
             //---
             uint256 max;
@@ -557,7 +559,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
 
                 operation.approvedTime = uint64(block.timestamp);
 
-                if (minimumDelay == 0) {
+                if (minimumDelay == 0 && operation.delay == 0) {
                     _execute(invokeID);
                 }
                 break;
@@ -602,9 +604,15 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         if (operation.executed == true) {
             revert AlreadyExecuted(invokeID);
         }
+
         if (block.timestamp - operation.approvedTime < minimumDelay) {
             revert MinimumDelayMustElapse(invokeID);
         }
+
+        if (block.timestamp - operation.approvedTime < operation.delay) {
+            revert OperationDelayMustElapse(invokeID);
+        }
+
         (
             operation.success, 
             operation.msg
@@ -616,6 +624,10 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
                 ))
             ).fromHex()
         );
+        
+        // operation marke as executed regardless operation successfully
+        operation.executed = true;
+
         emit OperationExecuted(invokeID, uint40(invokeID));
     }
  
@@ -642,26 +654,19 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
 
         uint8[][] memory roles = ICommunity(communityAddress).getRoles(addrs);
         uint256 len;
-        
-        uint256 expectGroupIndex = _getExpectGroupIndex();
-        for ( uint256 i = 0; i < roles.length; i++) {
 
-            // if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[0][i]])) {
-            //     len += 1;
-            // }
+        uint256 expectGroupIndex = _getExpectGroupIndex();
+        for ( uint256 i = 0; i < roles[0].length; i++) {
             for ( uint256 j = 0; j <= expectGroupIndex; j++) {
                 if (groups[j].endorseRoles.contains(roleIDs[roles[0][i]])) {
                     len += 1;
                 }
             }
         }
+
         uint8[] memory list = new uint8[](len);
         uint256 listIndex = 0;
         for (uint256 i = 0; i < roles[0].length; i++) {
-            // if (methods[keccak256(abi.encodePacked(contractAddress,method))].endorseRolesAllowed.contains(roleIDs[roles[0][i]])) {
-            //     list[listIndex] = roles[0][i];
-            //     listIndex += 1;
-            // }
             for ( uint256 j = 0; j <= expectGroupIndex; j++) {
                 if (groups[j].endorseRoles.contains(roleIDs[roles[0][i]])) {
                     list[listIndex] = roles[0][i];
@@ -669,6 +674,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
                 }
             }
         }
+
         return list;
     }
     
@@ -685,13 +691,9 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         internal 
         returns(uint256 index) 
     {
-        if (roleIDs[roleId] == 0) {
-            lastRoleIndex += 1;
-            roleIDs[roleId] = lastRoleIndex;
-            index = lastRoleIndex;
-        } else {
-            index = roleIDs[roleId];
-        }
+        lastRoleIndex += 1;
+        roleIDs[roleId] = lastRoleIndex;
+        index = lastRoleIndex;
     }
     
     /**
