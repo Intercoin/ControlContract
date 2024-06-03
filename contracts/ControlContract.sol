@@ -19,6 +19,7 @@ import "@intercoin/community/contracts/interfaces/ICommunity.sol";
 import "@intercoin/releasemanager/contracts/CostManagerHelper.sol";
 import "./interfaces/IControlContract.sol";
 import "./lib/StringUtils.sol";
+//import "hardhat/console.sol";
 /**
 *****************
 TEMPLATE CONTRACT
@@ -248,7 +249,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
                 revert RoleExistsOrInvokeEqualEndorse();
             }
 
-            groups[i].index = maxGroupIndex;
+            groups[i].index = i; // ?? maxGroupIndex;
             groups[i].lastSeenTime = block.timestamp;
             groups[i].invokeRoles.add(roleAdd(groupRoles[i].invokeRole));
             groups[i].endorseRoles.add(roleAdd(groupRoles[i].endorseRole));
@@ -285,27 +286,30 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         public 
         returns(uint256 invokeID, uint40 invokeIDWei)
     {
+        heartbeat();
+
         validateCanInvoke(_msgSender());
         bytes32 k = keccak256(abi.encodePacked(contractAddress,method));
         if (methods[k].exists == false) {
             revert UnknownMethod(contractAddress, method);
         }
         
-        heartbeat();
+        
 
         invokeID = generateInvokeID();
         invokeIDWei = uint40(invokeID);
         
         groups[currentGroupIndex].pairWeiInvokeId[invokeIDWei] = invokeID;
 
-        groups[currentGroupIndex].operations[invokeID].addr = methods[k].addr;
-        groups[currentGroupIndex].operations[invokeID].method = methods[k].method;
-        groups[currentGroupIndex].operations[invokeID].params = params;
-        groups[currentGroupIndex].operations[invokeID].minimum = minimum;
-        groups[currentGroupIndex].operations[invokeID].fraction = fraction;
-        groups[currentGroupIndex].operations[invokeID].delay = delay;
+        Operation storage operation = groups[currentGroupIndex].operations[invokeID];
+        operation.addr = methods[k].addr;
+        operation.method = methods[k].method;
+        operation.params = params;
+        operation.minimum = minimum;
+        operation.fraction = fraction;
+        operation.delay = delay;
         
-        groups[currentGroupIndex].operations[invokeID].exists = true;
+        operation.exists = true;
 
         emit OperationInvoked(invokeID, invokeIDWei, contractAddress, method, params);
        
@@ -361,10 +365,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
      * or transferring to next if previous expired
      * or restore previous if user belong to group which index less then current
      */
-    function heartbeat(
-    ) 
-        public
-    {
+    function heartbeat() public {
     
         uint256 len = 0;
         uint256 ii = 0;
@@ -434,6 +435,7 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
 
      */
     function getExpectGroupIndex(
+
     ) 
         public 
         view 
@@ -459,9 +461,14 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         uint8[][] memory roles = ICommunity(communityAddress).getRoles(addrs);
 
         uint256 expectGroupIndex = _getExpectGroupIndex();        
+
         for (uint256 i = 0; i < roles[0].length; i++) {
-            for (uint256 j = expectGroupIndex; i < 0; i--) {
-                if (groups[j].invokeRoles.contains(roleIDs[roles[0][i]])) {
+            
+            // we need to decrement from length to 0. BUT
+            // if trying loop - (uint256 j=length;j==0;j--)  - j in last iteraction will decrement again and become and undeflow
+            // so try like this (uint256 j=length+1;j>0;j--) and using index inside loop like j-1 to avoid this
+            for (uint256 j = expectGroupIndex+1; j > 0; j--) {
+                if (groups[j-1].invokeRoles.contains(roleIDs[roles[0][i]])) {
                     s = true;
                 }
             }
@@ -492,6 +499,15 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         }
     }
 
+    function getOperation(uint256 invokeID) internal view returns (bool exists, uint256 groupIndex) {
+        for (uint256 i = currentGroupIndex+1; i > 0; i--) {
+            if (groups[i-1].operations[invokeID].exists) {
+                exists = true;
+                groupIndex = i-1;
+            }
+        }
+    }
+
     /**
      * @param invokeID result of previous call to invoke()
      */
@@ -501,10 +517,15 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
         internal
         nonReentrant()
     {
-        Operation storage operation = groups[currentGroupIndex].operations[invokeID];
         // note that `invokeID` can be zero if come from _receive !! and tx should be revert
-        if (operation.exists == false) {revert UnknownInvokeId(invokeID);}
-
+        (bool exists, uint256 groupIndex) = getOperation(invokeID);
+        Operation storage operation;
+        if (exists) {
+            operation = groups[groupIndex].operations[invokeID];
+        } else {
+            revert UnknownInvokeId(invokeID);
+        }
+        
         uint8[] memory roles = getEndorsedRoles(_msgSender());
         if (roles.length == 0) {
             revert MissingEndorseRole(_msgSender());
@@ -567,7 +588,14 @@ contract ControlContract is ERC721HolderUpgradeable, IERC777RecipientUpgradeable
     )
         internal
     {
-        Operation storage operation = groups[currentGroupIndex].operations[invokeID];
+        (bool exists, uint256 groupIndex) = getOperation(invokeID);
+        Operation storage operation;
+        if (exists) {
+            operation = groups[groupIndex].operations[invokeID];
+        } else {
+            revert UnknownInvokeId(invokeID);
+        }
+
         if (operation.approvedTime == 0) {
             revert NotYetApproved(invokeID);
         }
