@@ -46,14 +46,22 @@ async function main() {
 
     var signers = await ethers.getSigners();
     const provider = ethers.provider;
-    var deployer;
+    var deployer,
+        deployer_auxiliary,
+        deployer_releasemanager,
+        deployer_control;
     if (signers.length == 1) {
+        
         deployer = signers[0];
+        deployer_auxiliary = signers[0];
+        deployer_releasemanager = signers[0];
+        deployer_control = signers[0];
     } else {
         [
-            /*depl_local*/,
             deployer,
-            /*depl_releasemanager*/,
+            deployer_auxiliary,
+            deployer_releasemanager,
+            deployer_control
         ] = signers;
     }
 
@@ -63,7 +71,7 @@ async function main() {
     
 	console.log(
 		"Deploying contracts with the account:",
-		deployer.address
+		deployer_auxiliary.address
 	);
 
 	// var options = {
@@ -71,12 +79,12 @@ async function main() {
 	// 	gasLimit: 10e6
 	// };
 
-    const deployerBalanceBefore = await provider.getBalance(deployer.address);
+    const deployerBalanceBefore = await provider.getBalance(deployer_auxiliary.address);
     console.log("Account balance:", (deployerBalanceBefore).toString());
 
 	const ControlContractF = await ethers.getContractFactory("ControlContract");
 
-	let implementationControlContract = await ControlContractF.connect(deployer).deploy();
+	let implementationControlContract = await ControlContractF.connect(deployer_auxiliary).deploy();
     
 	console.log("Implementations:");
 	console.log("  ControlContract deployed at:       ", implementationControlContract.target);
@@ -84,7 +92,7 @@ async function main() {
 	data_object.implementationControlContract 	= implementationControlContract.target;
     data_object.releaseManager                  = RELEASE_MANAGER;
 
-	const deployerBalanceAfter = await provider.getBalance(deployer.address);
+	const deployerBalanceAfter = await provider.getBalance(deployer_auxiliary.address);
 	console.log("Spent:", ethers.formatEther(deployerBalanceBefore - deployerBalanceAfter));
 	console.log("gasPrice:", ethers.formatUnits((await network.provider.send("eth_gasPrice")), "gwei")," gwei");
 
@@ -96,6 +104,9 @@ async function main() {
     let data_to_write = JSON.stringify(data_object_root, null, 2);
 	console.log(data_to_write);
     await write_data(data_to_write);
+
+    console.log('verifying');
+    await hre.run("verify:verify", {address: data_object.implementationControlContract, constructorArguments: []});
 }
 
 main()

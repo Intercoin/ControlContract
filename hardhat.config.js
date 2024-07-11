@@ -15,69 +15,59 @@ module.exports = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: false,
-      gasPrice: "auto",
-      forking: {
-        url: mainnetURL
-      }
-    },
-    kovan: {
-      url: kovanURL,
-      chainId: 42,
-      gas: 12000000,
-      accounts: [process.env.private_key],
-      saveDeployments: true
-    },
-    goerli: {
-      url: goerliURL,
-      chainId: 5,
-      gasPrice: 1000,
-      accounts: [process.env.private_key],
-      saveDeployments: true
-    },
-    rinkeby: {
-      url: rinkebyURL,
-      chainId: 4,
-      gasPrice: "auto",
-      accounts: [process.env.private_key],
-      saveDeployments: true
+      //[mainnetURL]
+      chainId: 1,
+      forking: {url: mainnetURL}
+      // //[bscURL]
+      // chainId: 56,
+      // forking: {url: bscURL}
+      // //[maticURL]
+      // chainId: 137,
+      // forking: {url: maticURL}
     },
     bsc: {
       url: bscURL,
       chainId: 56,
-      gasPrice: "auto",
+      //gasPrice: "auto",
       accounts: [
         process.env.private_key,
         process.env.private_key_auxiliary,
         process.env.private_key_releasemanager,
-        ],
+        process.env.private_key_control
+      ],
       saveDeployments: true
     },
-    matic: {
+    polygon: {
       url: maticURL,
       chainId: 137,
       //gasPrice: "auto",
-      accounts: [process.env.private_key],
-      saveDeployments: true
-    },
-    mumbai: {
-      url: mumbaiURL,
-      chainId: 80001,
-      gasPrice: "auto",
-      accounts: [process.env.private_key],
+      accounts: [
+        process.env.private_key,
+        process.env.private_key_auxiliary,
+        process.env.private_key_releasemanager,
+        process.env.private_key_control
+      ],
       saveDeployments: true
     },
     mainnet: {
       url: mainnetURL,
       chainId: 1,
-      gasPrice: 20000000000,
-      accounts: [process.env.private_key],
+      gasPrice: 3_000000000,
+      accounts: [
+        process.env.private_key,
+        process.env.private_key_auxiliary,
+        process.env.private_key_releasemanager,
+        process.env.private_key_control
+      ],
       saveDeployments: true
     }
   },
   etherscan: {
-    apiKey: process.env.MATIC_API_KEY
-    //apiKey: process.env.ETHERSCAN_API_KEY
-    //apiKey: process.env.bscscan_api_key
+    apiKey: {
+      polygon: process.env.MATIC_API_KEY,
+      mainnet: process.env.ETHERSCAN_API_KEY,
+      bsc: process.env.BSCSCAN_API_KEY
+    }
   },
   solidity: {
     compilers: [

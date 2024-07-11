@@ -42,21 +42,29 @@ async function main() {
 
 	var signers = await ethers.getSigners();
     const provider = ethers.provider;
-    var deployer;
+    var deployer,
+        deployer_auxiliary,
+        deployer_releasemanager,
+        deployer_control;
     if (signers.length == 1) {
+        
         deployer = signers[0];
+        deployer_auxiliary = signers[0];
+        deployer_releasemanager = signers[0];
+        deployer_control = signers[0];
     } else {
         [
-            /*depl_local*/,
             deployer,
-            /*depl_releasemanager*/,
+            deployer_auxiliary,
+            deployer_releasemanager,
+            deployer_control
         ] = signers;
     }
 	
 	const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 	console.log(
 		"Deploying contracts with the account:",
-		deployer.address
+		deployer_control.address
 	);
 
 	var options = {
@@ -73,21 +81,41 @@ async function main() {
 		options
 	]
 
-    const deployerBalanceBefore = await provider.getBalance(deployer.address);
+    const deployerBalanceBefore = await provider.getBalance(deployer_control.address);
     console.log("Account balance:", (deployerBalanceBefore).toString());
 
 	const ControlContractFactoryF = await ethers.getContractFactory("ControlContractFactory");
 
-	this.factory = await ControlContractFactoryF.connect(deployer).deploy(...params);
+	this.factory = await ControlContractFactoryF.connect(deployer_control).deploy(...params);
 
 	console.log("Factory deployed at:", this.factory.target);
 	console.log("with params:", [..._params]);
 
 	console.log("registered with release manager:", data_object.releaseManager);
+
+	const releaseManager = await ethers.getContractAt("ReleaseManager",data_object.releaseManager);
+    let txNewRelease = await releaseManager.connect(deployer_releasemanager).newRelease(
+        [this.factory.target], 
+        [
+            [
+                11,//uint8 factoryIndex; 
+                11,//uint16 releaseTag; 
+                "0x53696c766572000000000000000000000000000000000000"//bytes24 factoryChangeNotes;
+            ]
+        ]
+    );
+
+    console.log('newRelease - waiting');
+    await txNewRelease.wait(3);
+    console.log('newRelease - mined');
+
 	
-	const deployerBalanceAfter = await provider.getBalance(deployer.address);
-	console.log("Spent:", ethers.utils.formatEther(deployerBalanceBefore.sub(deployerBalanceAfter)));
-	console.log("gasPrice:", ethers.utils.formatUnits((await network.provider.send("eth_gasPrice")), "gwei")," gwei");
+	const deployerBalanceAfter = await provider.getBalance(deployer_control.address);
+	console.log("Spent:", ethers.formatEther(deployerBalanceBefore - deployerBalanceAfter));
+	console.log("gasPrice:", ethers.formatUnits((await network.provider.send("eth_gasPrice")), "gwei")," gwei");
+
+	console.log('verifying');
+    await hre.run("verify:verify", {address: this.factory.target, constructorArguments: _params});
 }
 
 main()
